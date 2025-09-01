@@ -17,7 +17,7 @@ export class Monitor {
 
   constructor(config: ReviConfig) {
     this.config = {
-      apiUrl: 'https://api.revi.dev',
+      apiUrl: 'http://localhost:4000',
       environment: 'production',
       debug: false,
       sampleRate: 1.0,

@@ -7,73 +7,11 @@ import PerformanceDemo from './components/PerformanceDemo';
 import NetworkDemo from './components/NetworkDemo';
 import FormDemo from './components/FormDemo';
 import SessionDemo from './components/SessionDemo';
+import { Monitor } from './revi-monitor/dist/index.esm.js';
 
-// Mock Monitor class for demo purposes
-class Monitor {
-  private sessionId: string;
-  
-  constructor(config: any) {
-    this.sessionId = 'demo-session-' + Math.random().toString(36).substr(2, 9);
-    console.log('Demo Monitor initialized with config:', config);
-  }
-
-  getSessionId(): string {
-    return this.sessionId;
-  }
-
-  captureException(error: Error, options?: any): string {
-    const id = 'error-' + Math.random().toString(36).substr(2, 9);
-    console.log('Demo: Captured exception', { error, options, id });
-    return id;
-  }
-
-  captureMessage(message: string, options?: any): string {
-    const id = 'message-' + Math.random().toString(36).substr(2, 9);
-    console.log('Demo: Captured message', { message, options, id });
-    return id;
-  }
-
-  addBreadcrumb(breadcrumb: any): void {
-    console.log('Demo: Added breadcrumb', breadcrumb);
-  }
-
-  setUserContext(user: any): void {
-    console.log('Demo: Set user context', user);
-  }
-
-  mark(name: string): void {
-    console.log('Demo: Performance mark', name);
-  }
-
-  measure(name: string, start?: string, end?: string): number {
-    const duration = Math.random() * 100;
-    console.log('Demo: Performance measure', { name, start, end, duration });
-    return duration;
-  }
-
-  getWebVitals(): any {
-    return {
-      lcp: Math.random() * 3000,
-      fid: Math.random() * 100,
-      cls: Math.random() * 0.5,
-      fcp: Math.random() * 2000,
-      ttfb: Math.random() * 500
-    };
-  }
-
-  flush(): void {
-    console.log('Demo: Flushed data');
-  }
-
-  endSession(): void {
-    this.sessionId = 'demo-session-' + Math.random().toString(36).substr(2, 9);
-    console.log('Demo: Ended session, new session:', this.sessionId);
-  }
-}
-
-// Initialize Demo Monitor
+// Initialize Demo Monitor  
 const revi = new Monitor({
-  apiKey: 'demo_' + Math.random().toString(36).substr(2, 32),
+  apiKey: 'revi_demo_api_key_for_testing_12345678901234567890',
   environment: 'demo',
   debug: true,
   apiUrl: 'http://localhost:4000',
