@@ -1,6 +1,7 @@
 import { api, Query } from "encore.dev/api";
 import { db } from "./db";
 import { parseUserAgent, groupBrowserForAnalytics, groupOSForAnalytics } from "./user-agent-parser";
+import { cacheManager } from "../cache/redis-cache";
 
 export interface ProjectStatsParams {
   projectId: number;
@@ -52,6 +53,27 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
   { expose: true, method: "GET", path: "/api/projects/:projectId/stats" },
   async (params) => {
     const days = params.days || 7;
+    
+    // OPTIMIZATION: Check cache first for significant performance improvement
+    const cachedStats = await cacheManager.getProjectStats(params.projectId, days);
+    if (cachedStats) {
+      return cachedStats;
+    }
+    
+    // Calculate stats if not cached
+    const stats = await calculateProjectStats(params.projectId, days);
+    
+    // Cache the results for future requests
+    await cacheManager.setProjectStats(params.projectId, days, stats);
+    
+    return stats;
+  }
+);
+
+/**
+ * Calculate comprehensive project statistics with optimized queries
+ */
+async function calculateProjectStats(projectId: number, days: number): Promise<ProjectStats> {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days);
@@ -60,7 +82,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
     const totalErrorsResult = await db.queryRow<{ count: number }>`
       SELECT COUNT(*) as count
       FROM errors
-      WHERE project_id = ${params.projectId}
+      WHERE project_id = ${projectId}
       AND timestamp >= ${startDate}
       AND timestamp <= ${endDate}
     `;
@@ -74,7 +96,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
     const activeSessionsResult = await db.queryRow<{ count: number }>`
       SELECT COUNT(DISTINCT session_id) as count
       FROM sessions
-      WHERE project_id = ${params.projectId}
+      WHERE project_id = ${projectId}
       AND started_at >= ${startDate}
       AND started_at <= ${endDate}
     `;
@@ -91,7 +113,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
         )
       ) as count
       FROM sessions
-      WHERE project_id = ${params.projectId}
+      WHERE project_id = ${projectId}
       AND started_at >= ${startDate}
       AND started_at <= ${endDate}
     `;
@@ -105,7 +127,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
           COALESCE(ended_at, NOW()) - started_at
         ))::DOUBLE PRECISION as duration
       FROM sessions
-      WHERE project_id = ${params.projectId}
+      WHERE project_id = ${projectId}
       AND started_at >= ${startDate}
       AND started_at <= ${endDate}
       AND started_at IS NOT NULL
@@ -128,7 +150,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
         COUNT(*) as count,
         MAX(timestamp) as last_seen
       FROM errors
-      WHERE project_id = ${params.projectId}
+      WHERE project_id = ${projectId}
       AND timestamp >= ${startDate}
       AND timestamp <= ${endDate}
       GROUP BY message
@@ -152,7 +174,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
         ) as status,
         COUNT(*) as count
       FROM errors
-      WHERE project_id = ${params.projectId}
+      WHERE project_id = ${projectId}
       AND timestamp >= ${startDate}
       AND timestamp <= ${endDate}
       GROUP BY COALESCE(
@@ -198,7 +220,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
         COALESCE(url, 'Unknown') as url,
         COUNT(*) as count
       FROM errors
-      WHERE project_id = ${params.projectId}
+      WHERE project_id = ${projectId}
       AND timestamp >= ${startDate}
       AND timestamp <= ${endDate}
       AND url IS NOT NULL
@@ -220,7 +242,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
         user_agent,
         COUNT(*) as count
       FROM errors
-      WHERE project_id = ${params.projectId}
+      WHERE project_id = ${projectId}
       AND timestamp >= ${startDate}
       AND timestamp <= ${endDate}
       AND user_agent IS NOT NULL
@@ -281,7 +303,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
       const dayErrorsResult = await db.queryRow<{ count: number }>`
         SELECT COUNT(*) as count
         FROM errors
-        WHERE project_id = ${params.projectId}
+        WHERE project_id = ${projectId}
         AND timestamp >= ${dayStart}
         AND timestamp <= ${dayEnd}
       `;
@@ -305,8 +327,7 @@ export const getProjectStats = api<ProjectStatsParams, ProjectStats>(
       topErrorPages,
       errorsByStatus
     };
-  }
-);
+}
 
 export interface DatabaseStatsParams {
   project_id?: Query<number>;

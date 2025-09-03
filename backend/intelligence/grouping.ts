@@ -94,14 +94,22 @@ export const processError = api<ProcessErrorParams, ProcessErrorResponse>(
         await updateErrorGroup(bestMatch.id, user_id);
         
         // Update the group's fingerprint list (could have multiple similar fingerprints)
+        // Safely handle JSONB operations with proper type conversion
         await db.exec`
           UPDATE error_groups 
-          SET metadata = jsonb_set(
-            COALESCE(metadata, '{}'::jsonb),
-            '{similar_fingerprints}',
-            COALESCE(metadata->'similar_fingerprints', '[]'::jsonb) || ${JSON.stringify([fingerprintResult.fingerprint])},
-            true
-          ),
+          SET metadata = CASE 
+            WHEN jsonb_typeof(COALESCE(metadata, '{}'::jsonb)) = 'object' THEN
+              jsonb_set(
+                COALESCE(metadata, '{}'::jsonb),
+                '{similar_fingerprints}',
+                COALESCE(metadata->'similar_fingerprints', '[]'::jsonb) || ${JSON.stringify([fingerprintResult.fingerprint])}::jsonb,
+                true
+              )
+            ELSE 
+              jsonb_build_object(
+                'similar_fingerprints', ${JSON.stringify([fingerprintResult.fingerprint])}::jsonb
+              )
+          END,
           updated_at = NOW()
           WHERE id = ${bestMatch.id}
         `;
@@ -302,7 +310,12 @@ export const updateErrorGroupStatus = api<UpdateErrorGroupParams, { success: boo
     }
     
     if (params.resolution_notes) {
-      updates.push(`metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{resolution_notes}', $${paramIndex})`);
+      updates.push(`metadata = CASE 
+        WHEN jsonb_typeof(COALESCE(metadata, '{}'::jsonb)) = 'object' THEN
+          jsonb_set(COALESCE(metadata, '{}'::jsonb), '{resolution_notes}', $${paramIndex}::jsonb)
+        ELSE 
+          jsonb_build_object('resolution_notes', $${paramIndex}::jsonb)
+      END`);
       values.push(JSON.stringify(params.resolution_notes));
       paramIndex++;
     }
