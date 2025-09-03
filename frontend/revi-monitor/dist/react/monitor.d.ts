@@ -9,10 +9,11 @@ export declare class Monitor {
     private dataManager;
     private userJourneyTracker;
     private sessionReplayManager;
+    private samplingManager;
     private isInitialized;
     constructor(config: ReviConfig);
     private init;
-    private setupPeriodicFlush;
+    private setupAdaptiveFlush;
     captureException(error: Error, options?: {
         level?: 'error' | 'warning' | 'info' | 'debug';
         tags?: Record<string, string>;

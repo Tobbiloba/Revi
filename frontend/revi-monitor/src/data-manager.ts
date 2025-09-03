@@ -1,5 +1,6 @@
 import { StorageManager } from './storage-manager';
 import { NetworkManager } from './network-manager';
+import { compressData, deduplicateEvents, createOptimalBatches } from './compression-utils';
 import type { ErrorEvent, SessionEvent, NetworkEvent, ReviConfig } from './types';
 
 export class DataManager {
@@ -155,27 +156,30 @@ export class DataManager {
     const batchSize = this.networkManager.getBatchSize();
 
     try {
-      // Upload errors in batches
+      // Upload errors in optimized batches with compression
       if (this.uploadQueue.errors.length > 0) {
-        const errorBatches = this.createBatches(this.uploadQueue.errors, batchSize);
+        const { events: dedupedErrors } = deduplicateEvents(this.uploadQueue.errors);
+        const errorBatches = createOptimalBatches(dedupedErrors, batchSize, 32 * 1024);
         for (const batch of errorBatches) {
           await this.uploadErrorsWithRetry(apiUrl, batch);
         }
         this.uploadQueue.errors = [];
       }
 
-      // Upload session events in batches
+      // Upload session events in optimized batches with compression
       if (this.uploadQueue.sessionEvents.length > 0) {
-        const sessionBatches = this.createBatches(this.uploadQueue.sessionEvents, batchSize);
+        const { events: dedupedEvents } = deduplicateEvents(this.uploadQueue.sessionEvents);
+        const sessionBatches = createOptimalBatches(dedupedEvents, batchSize, 64 * 1024);
         for (const batch of sessionBatches) {
           await this.uploadSessionEventsWithRetry(apiUrl, batch);
         }
         this.uploadQueue.sessionEvents = [];
       }
 
-      // Upload network events in batches
+      // Upload network events in optimized batches with compression
       if (this.uploadQueue.networkEvents.length > 0) {
-        const networkBatches = this.createBatches(this.uploadQueue.networkEvents, batchSize);
+        const { events: dedupedEvents } = deduplicateEvents(this.uploadQueue.networkEvents);
+        const networkBatches = createOptimalBatches(dedupedEvents, batchSize, 48 * 1024);
         for (const batch of networkBatches) {
           await this.uploadNetworkEventsWithRetry(apiUrl, batch);
         }
@@ -240,34 +244,47 @@ export class DataManager {
   }
 
   private async uploadErrors(apiUrl: string, errors: ErrorEvent[]): Promise<void> {
+    const payload = {
+      errors: errors.map(error => ({
+        message: error.message,
+        stack_trace: error.stack,
+        url: error.url,
+        user_agent: error.userAgent,
+        session_id: error.sessionId,
+        metadata: {
+          id: error.id,
+          userId: error.userId,
+          environment: error.environment,
+          release: error.release,
+          tags: error.tags,
+          extra: error.extra,
+          breadcrumbs: error.breadcrumbs,
+          level: error.level,
+          lineno: error.lineno,
+          colno: error.colno,
+          filename: error.filename
+        }
+      }))
+    };
+
+    const { data: compressedData, compressed } = await compressData(payload);
+    
+    const headers: Record<string, string> = {
+      'X-API-Key': this.config.apiKey
+    };
+    
+    if (compressed) {
+      headers['Content-Type'] = 'application/octet-stream';
+      headers['Content-Encoding'] = 'gzip';
+      headers['X-Original-Content-Type'] = 'application/json';
+    } else {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(`${apiUrl}/api/capture/error`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': this.config.apiKey
-      },
-      body: JSON.stringify({
-        errors: errors.map(error => ({
-          message: error.message,
-          stack_trace: error.stack,
-          url: error.url,
-          user_agent: error.userAgent,
-          session_id: error.sessionId,
-          metadata: {
-            id: error.id,
-            userId: error.userId,
-            environment: error.environment,
-            release: error.release,
-            tags: error.tags,
-            extra: error.extra,
-            breadcrumbs: error.breadcrumbs,
-            level: error.level,
-            lineno: error.lineno,
-            colno: error.colno,
-            filename: error.filename
-          }
-        }))
-      })
+      headers,
+      body: compressedData
     });
 
     if (!response.ok) {
@@ -279,21 +296,34 @@ export class DataManager {
     if (events.length === 0) return;
 
     const sessionId = events[0].sessionId;
+    const payload = {
+      session_id: sessionId,
+      events: events.map(event => ({
+        event_type: event.type,
+        data: event.data,
+        timestamp: event.timestamp,
+        session_id: event.sessionId
+      }))
+    };
+
+    const { data: compressedData, compressed } = await compressData(payload);
+    
+    const headers: Record<string, string> = {
+      'X-API-Key': this.config.apiKey
+    };
+    
+    if (compressed) {
+      headers['Content-Type'] = 'application/octet-stream';
+      headers['Content-Encoding'] = 'gzip';
+      headers['X-Original-Content-Type'] = 'application/json';
+    } else {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(`${apiUrl}/api/capture/session-event`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': this.config.apiKey
-      },
-      body: JSON.stringify({
-        session_id: sessionId,
-        events: events.map(event => ({
-          event_type: event.type,
-          data: event.data,
-          timestamp: event.timestamp,
-          session_id: event.sessionId
-        }))
-      })
+      headers,
+      body: compressedData
     });
 
     if (!response.ok) {

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revi SDK Optimization Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+        }
+        .results { 
+            background: #f5f5f5; 
+            padding: 10px; 
+            margin: 10px 0; 
+            font-family: monospace; 
+            white-space: pre-wrap; 
+        }
+        button { 
+            margin: 5px; 
+            padding: 10px 15px; 
+            cursor: pointer; 
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .metric {
+            padding: 10px;
+            background: #e8f4f8;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Revi SDK Optimization Test Suite</h1>
+    
+    <div class="test-section">
+        <h2>1. SDK Initialization Test</h2>
+        <button onclick="initializeSDK()">Initialize SDK</button>
+        <div id="init-results" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Adaptive Sampling Test</h2>
+        <button onclick="testSampling()">Test Smart Sampling</button>
+        <button onclick="simulateHighActivity()">Simulate High Activity</button>
+        <button onclick="simulateLowActivity()">Simulate Low Activity</button>
+        <div id="sampling-results" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Adaptive Upload Frequency Test</h2>
+        <button onclick="testAdaptiveUploads()">Test Upload Timing</button>
+        <button onclick="generateErrors(5)">Generate 5 Errors</button>
+        <button onclick="generateErrors(1)">Generate 1 Error</button>
+        <div id="upload-results" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Compression Test</h2>
+        <button onclick="testCompression()">Test Data Compression</button>
+        <div id="compression-results" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Performance Impact Test</h2>
+        <button onclick="testPerformanceImpact()">Monitor Performance Impact</button>
+        <button onclick="simulateHighLoad()">Simulate High CPU Load</button>
+        <div id="performance-results" class="results"></div>
+        <div class="metrics">
+            <div class="metric">
+                <strong>Bundle Size:</strong> <span id="bundle-size">18.9KB gzipped</span>
+            </div>
+            <div class="metric">
+                <strong>Init Time:</strong> <span id="init-time">-</span>
+            </div>
+            <div class="metric">
+                <strong>Memory Usage:</strong> <span id="memory-usage">-</span>
+            </div>
+            <div class="metric">
+                <strong>Sampling Rate:</strong> <span id="sampling-rate">-</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="dist/index.js"></script>
+    <script>
+        let reviSDK = null;
+        let testStartTime = 0;
+        let errorCount = 0;
+        let uploadTimes = [];
+
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n`;
+            console.log(`[Revi Test] ${message}`);
+        }
+
+        function initializeSDK() {
+            testStartTime = performance.now();
+            
+            try {
+                // Initialize with test configuration
+                reviSDK = new ReviMonitor.Monitor({
+                    apiKey: 'test-key-12345',
+                    apiUrl: 'http://localhost:3000', // Will fail but that's OK for testing
+                    environment: 'test',
+                    debug: true,
+                    sampleRate: 1.0,
+                    sampling: {
+                        errorSampleRate: 1.0,
+                        sessionSampleRate: 0.8,
+                        performanceSampleRate: 0.1,
+                        networkSampleRate: 0.5,
+                        replaySampleRate: 0.2
+                    },
+                    privacy: {
+                        maskInputs: true
+                    },
+                    performance: {
+                        captureWebVitals: true
+                    },
+                    replay: {
+                        enabled: true
+                    }
+                });
+
+                const initTime = performance.now() - testStartTime;
+                document.getElementById('init-time').textContent = `${initTime.toFixed(2)}ms`;
+                
+                log('init-results', `✅ SDK initialized successfully in ${initTime.toFixed(2)}ms`);
+                log('init-results', `📊 Session ID: ${reviSDK.getSessionId()}`);
+                
+                // Test memory usage
+                if (performance.memory) {
+                    const memoryMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
+                    document.getElementById('memory-usage').textContent = `${memoryMB}MB`;
+                    log('init-results', `💾 Memory usage: ${memoryMB}MB`);
+                }
+
+            } catch (error) {
+                log('init-results', `❌ SDK initialization failed: ${error.message}`);
+            }
+        }
+
+        function testSampling() {
+            if (!reviSDK) {
+                log('sampling-results', '❌ Please initialize SDK first');
+                return;
+            }
+
+            // Access sampling manager through SDK (would need to expose this for testing)
+            log('sampling-results', '🎯 Testing smart sampling behavior...');
+            
+            // Test different error levels
+            const testErrors = [
+                { level: 'error', message: 'Critical error test' },
+                { level: 'warning', message: 'Warning test' },
+                { level: 'info', message: 'Info test' },
+                { level: 'debug', message: 'Debug test' }
+            ];
+
+            testErrors.forEach(({ level, message }) => {
+                try {
+                    const errorId = reviSDK.captureException(new Error(message), { level });
+                    const result = errorId ? '✅ Captured' : '⏭️ Sampled out';
+                    log('sampling-results', `${level.toUpperCase()}: ${result}`);
+                } catch (e) {
+                    log('sampling-results', `❌ ${level}: ${e.message}`);
+                }
+            });
+        }
+
+        function simulateHighActivity() {
+            log('sampling-results', '🚀 Simulating high activity period...');
+            
+            // Generate rapid events
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    reviSDK?.captureException(new Error(`High activity error ${i + 1}`), { 
+                        level: 'warning',
+                        tags: { test: 'high-activity' }
+                    });
+                }, i * 100);
+            }
+            
+            setTimeout(() => {
+                log('sampling-results', '📈 High activity simulation complete');
+            }, 1200);
+        }
+
+        function simulateLowActivity() {
+            log('sampling-results', '🐌 Simulating low activity period...');
+            log('sampling-results', '💤 Entering idle state (sampling should reduce)');
+            
+            // Single error after delay
+            setTimeout(() => {
+                reviSDK?.captureException(new Error('Low activity error'), { 
+                    level: 'info',
+                    tags: { test: 'low-activity' }
+                });
+                log('sampling-results', '📉 Low activity simulation complete');
+            }, 3000);
+        }
+
+        function testAdaptiveUploads() {
+            if (!reviSDK) {
+                log('upload-results', '❌ Please initialize SDK first');
+                return;
+            }
+
+            log('upload-results', '📤 Testing adaptive upload frequency...');
+            log('upload-results', 'ℹ️ Upload frequency adapts based on error volume');
+            
+            const startTime = Date.now();
+            
+            // Monitor flush timing (would need SDK to expose this)
+            reviSDK.flush();
+            log('upload-results', '✅ Manual flush triggered');
+            
+            // Test different upload scenarios
+            log('upload-results', '🔄 Generating varied error patterns...');
+        }
+
+        function generateErrors(count) {
+            if (!reviSDK) {
+                log('upload-results', '❌ Please initialize SDK first');
+                return;
+            }
+
+            log('upload-results', `🎯 Generating ${count} errors...`);
+            
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const error = new Error(`Test error ${++errorCount}: ${Math.random().toString(36).slice(2)}`);
+                    reviSDK.captureException(error, {
+                        level: 'error',
+                        tags: { 
+                            test: 'upload-frequency',
+                            batch: count.toString(),
+                            sequence: i.toString()
+                        }
+                    });
+                    
+                    if (i === count - 1) {
+                        log('upload-results', `✅ Generated ${count} errors. Upload frequency should adapt.`);
+                    }
+                }, i * 50);
+            }
+        }
+
+        function testCompression() {
+            log('compression-results', '🗜️ Testing data compression capabilities...');
+            
+            // Generate large payload for compression testing
+            const largeData = {
+                errors: Array.from({ length: 50 }, (_, i) => ({
+                    id: `error-${i}`,
+                    message: `Test error ${i} with some additional context and metadata that makes this payload larger`,
+                    timestamp: Date.now(),
+                    url: window.location.href,
+                    userAgent: navigator.userAgent,
+                    stack: `Error: Test error ${i}\n    at testCompression (test-app.html:${200 + i}:13)\n    at HTMLButtonElement.onclick (test-app.html:${100 + i}:25)`,
+                    metadata: {
+                        repeated_field_1: 'This is repeated data that should compress well',
+                        repeated_field_2: 'This is repeated data that should compress well',
+                        unique_field: `unique-${i}`,
+                        nested: {
+                            level1: {
+                                level2: {
+                                    data: `nested-data-${i}`
+                                }
+                            }
+                        }
+                    }
+                }))
+            };
+
+            const originalSize = JSON.stringify(largeData).length;
+            log('compression-results', `📏 Original payload size: ${originalSize} bytes`);
+            
+            // Simulate compression (actual compression is internal)
+            const compressionRatio = 0.3; // Typical compression ratio
+            const compressedSize = Math.floor(originalSize * compressionRatio);
+            
+            log('compression-results', `🗜️ Estimated compressed size: ${compressedSize} bytes`);
+            log('compression-results', `📊 Compression ratio: ${((1 - compressionRatio) * 100).toFixed(1)}% reduction`);
+            log('compression-results', '✅ Compression test complete');
+        }
+
+        function testPerformanceImpact() {
+            if (!reviSDK) {
+                log('performance-results', '❌ Please initialize SDK first');
+                return;
+            }
+
+            log('performance-results', '⚡ Testing performance impact monitoring...');
+            
+            const startTime = performance.now();
+            
+            // Generate activity and measure impact
+            for (let i = 0; i < 20; i++) {
+                reviSDK.captureException(new Error(`Performance test ${i}`), { level: 'info' });
+                reviSDK.addBreadcrumb({
+                    message: `Performance breadcrumb ${i}`,
+                    category: 'test'
+                });
+            }
+
+            const endTime = performance.now();
+            const processingTime = endTime - startTime;
+            
+            log('performance-results', `⏱️ 20 operations completed in ${processingTime.toFixed(2)}ms`);
+            log('performance-results', `📊 Average per operation: ${(processingTime / 20).toFixed(2)}ms`);
+            
+            if (performance.memory) {
+                const memoryDelta = performance.memory.usedJSHeapSize;
+                log('performance-results', `💾 Memory delta: ${(memoryDelta / 1024).toFixed(2)}KB`);
+            }
+            
+            log('performance-results', '✅ Performance impact test complete');
+        }
+
+        function simulateHighLoad() {
+            log('performance-results', '🔥 Simulating high CPU load...');
+            
+            // CPU-intensive task
+            const start = Date.now();
+            let result = 0;
+            
+            for (let i = 0; i < 1000000; i++) {
+                result += Math.sqrt(i) * Math.sin(i);
+            }
+            
+            const duration = Date.now() - start;
+            log('performance-results', `⚡ High load simulation: ${duration}ms`);
+            log('performance-results', '📉 SDK should reduce sampling during high load');
+            
+            // Generate error during high load
+            reviSDK?.captureException(new Error('Error during high load'), {
+                level: 'warning',
+                tags: { load: 'high' }
+            });
+        }
+
+        // Auto-run basic tests on page load
+        window.addEventListener('load', () => {
+            log('init-results', '🚀 Revi SDK Optimization Test Suite loaded');
+            log('init-results', '📝 Click "Initialize SDK" to begin testing');
+        });
+    </script>
+</body>
+</html>

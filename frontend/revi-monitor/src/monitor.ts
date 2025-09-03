@@ -1,11 +1,12 @@
 import { ErrorHandler } from './error-handler';
 import { SessionManager } from './session';
 import { NetworkMonitor } from './network-monitor';
-import { PerformanceMonitor } from './performance-monitor';
 import { DataManager } from './data-manager';
 import { UserJourneyTracker } from './user-journey';
-import { SessionReplayManager } from './session-replay';
 import { TraceManager } from './trace-manager';
+import { SamplingManager } from './sampling-manager';
+import { PerformanceMonitor } from './performance-monitor';
+import { SessionReplayManager } from './session-replay';
 import { isBot } from './utils';
 import type { ReviConfig, ErrorEvent, UserContext } from './types';
 
@@ -19,6 +20,7 @@ export class Monitor {
   private dataManager: DataManager;
   private userJourneyTracker: UserJourneyTracker;
   private sessionReplayManager: SessionReplayManager;
+  private samplingManager: SamplingManager;
   private isInitialized = false;
 
   constructor(config: ReviConfig) {
@@ -68,7 +70,7 @@ export class Monitor {
       // Create shared trace manager
       this.traceManager = new TraceManager();
       
-      // Initialize components with shared trace manager
+      // Initialize core components with shared trace manager
       this.errorHandler = new ErrorHandler(this.config, this.traceManager);
       this.sessionManager = new SessionManager(this.config, this.traceManager);
       this.networkMonitor = new NetworkMonitor(this.config, this.traceManager);
@@ -76,8 +78,9 @@ export class Monitor {
       this.dataManager = new DataManager(this.config);
       this.userJourneyTracker = new UserJourneyTracker(this.config);
       this.sessionReplayManager = new SessionReplayManager(this.config, this.sessionManager.getSessionId());
+      this.samplingManager = new SamplingManager(this.config);
 
-      this.setupPeriodicFlush();
+      this.setupAdaptiveFlush();
       
       // Start session replay if enabled
       if (this.config.replay?.enabled) {
@@ -96,11 +99,46 @@ export class Monitor {
     }
   }
 
-  private setupPeriodicFlush(): void {
-    // Flush data every 10 seconds
-    setInterval(() => {
-      this.flush();
-    }, 10000);
+  private setupAdaptiveFlush(): void {
+    let errorCount = 0;
+    let lastFlushTime = Date.now();
+    
+    const adaptiveFlush = () => {
+      const now = Date.now();
+      const timeSinceLastFlush = now - lastFlushTime;
+      
+      // Base interval: 10 seconds
+      let flushInterval = 10000;
+      
+      // Reduce interval if there are many errors (max: 3 seconds)
+      if (errorCount > 0) {
+        flushInterval = Math.max(3000, 10000 - (errorCount * 1000));
+      }
+      
+      // Increase interval if no activity (max: 30 seconds)
+      if (errorCount === 0 && timeSinceLastFlush > 15000) {
+        flushInterval = Math.min(30000, flushInterval + 5000);
+      }
+      
+      if (timeSinceLastFlush >= flushInterval) {
+        this.flush();
+        lastFlushTime = now;
+        errorCount = 0; // Reset error count after flush
+      }
+      
+      // Schedule next check
+      setTimeout(adaptiveFlush, 2000);
+    };
+    
+    // Start the adaptive flush cycle
+    adaptiveFlush();
+    
+    // Track errors for adaptive frequency
+    const originalCaptureException = this.captureException.bind(this);
+    this.captureException = (error: Error, options = {}) => {
+      errorCount++;
+      return originalCaptureException(error, options);
+    };
   }
 
   // Public API methods
@@ -110,6 +148,16 @@ export class Monitor {
     extra?: Record<string, any>;
   } = {}): string {
     if (!this.isInitialized) return '';
+
+    // Sampling check - always capture critical errors
+    const isCriticalError = options.level === 'error' || !options.level;
+    if (!isCriticalError && this.samplingManager.shouldSkipCapture('error')) {
+      return ''; // Skip non-critical errors based on sampling
+    }
+
+    // Update activity level based on error frequency
+    this.samplingManager.incrementErrorFrequency();
+    this.samplingManager.updateActivityLevel('high');
 
     const errorId = this.errorHandler.captureException(error, options);
     if (errorId) {
@@ -281,7 +329,7 @@ export class Monitor {
     }
   }
 
-  // Cleanup
+
   // Trace context methods
   getCurrentTraceId(): string | undefined {
     return this.traceManager?.getCurrentTraceId();

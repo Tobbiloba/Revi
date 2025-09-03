@@ -1,4 +1,11 @@
+// Core exports
 export { Monitor } from './monitor';
+export { ErrorHandler } from './error-handler';
+export { SessionManager } from './session';
+export { NetworkMonitor } from './network-monitor';
+export { DataManager } from './data-manager';
+
+// Type exports
 export type { 
   ReviConfig, 
   ErrorEvent, 
@@ -10,8 +17,16 @@ export type {
   PerformanceEntry 
 } from './types';
 
+// Lazy-loadable modules
+export type { PerformanceMonitor } from './performance-monitor';
+export type { SessionReplayManager } from './session-replay';
+
 // Default export for convenience
 export { Monitor as default } from './monitor';
+
+// Lazy loading helpers (temporarily disabled for build)
+// export const loadPerformanceMonitor = () => import('./performance-monitor').then(m => m.PerformanceMonitor);
+// export const loadSessionReplay = () => import('./session-replay').then(m => m.SessionReplayManager);
 
 // Global initialization helper
 declare global {
