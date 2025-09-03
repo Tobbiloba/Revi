@@ -1,13 +1,16 @@
 import { formatStackTrace, generateId } from './utils';
 import type { ErrorEvent, Breadcrumb, ReviConfig } from './types';
+import { TraceManager } from './trace-manager';
 
 export class ErrorHandler {
   private config: ReviConfig;
   private breadcrumbs: Breadcrumb[] = [];
   private userContext: any = {};
+  private traceManager: TraceManager;
 
-  constructor(config: ReviConfig) {
+  constructor(config: ReviConfig, traceManager?: TraceManager) {
     this.config = config;
+    this.traceManager = traceManager || new TraceManager();
     this.setupGlobalHandlers();
   }
 
@@ -90,6 +93,10 @@ export class ErrorHandler {
 
     const errorId = generateId();
     
+    // Start a new span for this error
+    const spanId = this.traceManager.startSpan(`error:${errorData.message}`);
+    const traceContext = this.traceManager.getTraceContext();
+    
     const errorEvent: ErrorEvent = {
       id: errorId,
       timestamp: Date.now(),
@@ -107,7 +114,10 @@ export class ErrorHandler {
       tags: errorData.tags,
       extra: errorData.extra,
       breadcrumbs: [...this.breadcrumbs],
-      level: errorData.level || 'error'
+      level: errorData.level || 'error',
+      traceId: traceContext.traceId,
+      spanId: spanId,
+      parentSpanId: traceContext.parentSpanId
     };
 
     // Apply beforeSend filter

@@ -1,5 +1,6 @@
 import { generateId, getSessionStorage } from './utils';
 import type { SessionEvent, ReviConfig } from './types';
+import { TraceManager } from './trace-manager';
 
 export class SessionManager {
   private sessionId: string;
@@ -7,9 +8,11 @@ export class SessionManager {
   private events: SessionEvent[] = [];
   private config: ReviConfig;
   private storage: Storage | null;
+  private traceManager?: TraceManager;
 
-  constructor(config: ReviConfig) {
+  constructor(config: ReviConfig, traceManager?: TraceManager) {
     this.config = config;
+    this.traceManager = traceManager;
     this.storage = getSessionStorage();
     this.sessionId = this.getOrCreateSessionId();
     this.startTime = Date.now();
@@ -193,11 +196,17 @@ export class SessionManager {
       return;
     }
 
+    // Start a new span for this session event if trace manager is available
+    const traceContext = this.traceManager?.getTraceContext();
+    const spanId = this.traceManager?.startSpan(`session:${type}`);
+
     const event: SessionEvent = {
       sessionId: this.sessionId,
       timestamp: Date.now(),
       type,
-      data
+      data,
+      traceId: traceContext?.traceId,
+      spanId: spanId
     };
 
     // Apply beforeSendSession filter

@@ -1,6 +1,7 @@
 import type { ReviConfig, UserContext } from './types';
 export declare class Monitor {
     private config;
+    private traceManager;
     private errorHandler;
     private sessionManager;
     private networkMonitor;
@@ -55,6 +56,15 @@ export declare class Monitor {
         };
     } | null;
     flush(): void;
+    getCurrentTraceId(): string | undefined;
+    getCurrentSpanId(): string | undefined;
+    getTraceContext(): {
+        traceId?: string;
+        spanId?: string;
+        parentSpanId?: string;
+    };
+    startSpan(operationName: string): string | undefined;
+    finishSpan(spanId?: string, data?: Record<string, any>): void;
     destroy(): void;
 }
 //# sourceMappingURL=monitor.d.ts.map

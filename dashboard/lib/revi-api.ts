@@ -255,8 +255,9 @@ class ReviAPIClient {
     return response;
   }
 
-  async getProjectStats(days: number = 7): Promise<ProjectStats> {
-    const endpoint = `/api/projects/${this.projectId}/stats?days=${days}`;
+  async getProjectStats(projectId?: number, days: number = 7): Promise<ProjectStats> {
+    const targetProjectId = projectId || this.projectId;
+    const endpoint = `/api/projects/${targetProjectId}/stats?days=${days}`;
     return this.makeRequest<ProjectStats>(endpoint);
   }
 

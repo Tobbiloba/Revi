@@ -1,64 +1,107 @@
-import { getLocalStorage } from './utils';
+import { StorageManager } from './storage-manager';
+import { NetworkManager } from './network-manager';
 import type { ErrorEvent, SessionEvent, NetworkEvent, ReviConfig } from './types';
-
-interface QueuedData {
-  errors: ErrorEvent[];
-  sessionEvents: SessionEvent[];
-  networkEvents: NetworkEvent[];
-}
 
 export class DataManager {
   private config: ReviConfig;
-  private storage: Storage | null;
-  private uploadQueue: QueuedData = {
+  private storageManager: StorageManager;
+  private networkManager: NetworkManager;
+  private uploadTimer: NodeJS.Timeout | null = null;
+  private isUploading = false;
+  private retryAttempts = new Map<string, number>();
+  private uploadQueue: {
+    errors: ErrorEvent[];
+    sessionEvents: SessionEvent[];
+    networkEvents: NetworkEvent[];
+  } = {
     errors: [],
     sessionEvents: [],
     networkEvents: []
   };
-  private uploadTimer: NodeJS.Timeout | null = null;
-  private isUploading = false;
 
   constructor(config: ReviConfig) {
     this.config = config;
-    this.storage = getLocalStorage();
+    this.storageManager = new StorageManager();
+    this.networkManager = new NetworkManager();
     
-    this.loadQueueFromStorage();
-    this.startUploadTimer();
-    this.setupBeforeUnloadHandler();
+    this.initialize();
   }
 
-  private loadQueueFromStorage(): void {
-    if (!this.storage) return;
-
+  private async initialize(): Promise<void> {
     try {
-      const storedData = this.storage.getItem('revi_upload_queue');
-      if (storedData) {
-        this.uploadQueue = JSON.parse(storedData);
-      }
-    } catch (e) {
-      // Failed to load from storage
+      await this.storageManager.initialize();
+      await this.loadQueueFromStorage();
+      this.startNetworkAwareUploadTimer();
+      this.setupBeforeUnloadHandler();
+      this.setupNetworkChangeHandler();
+    } catch (error) {
+      console.error('[Revi] Failed to initialize data manager:', error);
     }
   }
 
-  private saveQueueToStorage(): void {
-    if (!this.storage) return;
-
+  private async loadQueueFromStorage(): Promise<void> {
     try {
-      this.storage.setItem('revi_upload_queue', JSON.stringify(this.uploadQueue));
-    } catch (e) {
-      // Failed to save to storage, probably quota exceeded
-      this.clearQueue();
+      const storedData = await this.storageManager.getAllData();
+      this.uploadQueue = storedData;
+    } catch (error) {
+      console.error('[Revi] Failed to load queue from storage:', error);
     }
   }
 
-  private startUploadTimer(): void {
-    const interval = 5000; // Upload every 5 seconds
-    
-    this.uploadTimer = setInterval(() => {
-      if (!this.isUploading && this.hasQueuedData()) {
-        this.uploadData();
+  private async saveQueueToStorage(): Promise<void> {
+    try {
+      await this.storageManager.clearAll();
+      if (this.uploadQueue.errors.length > 0) {
+        await this.storageManager.storeErrors(this.uploadQueue.errors);
       }
-    }, interval);
+      if (this.uploadQueue.sessionEvents.length > 0) {
+        await this.storageManager.storeSessionEvents(this.uploadQueue.sessionEvents);
+      }
+      if (this.uploadQueue.networkEvents.length > 0) {
+        await this.storageManager.storeNetworkEvents(this.uploadQueue.networkEvents);
+      }
+    } catch (error) {
+      console.error('[Revi] Failed to save queue to storage:', error);
+    }
+  }
+
+  private startNetworkAwareUploadTimer(): void {
+    const scheduleNextUpload = () => {
+      if (this.uploadTimer) {
+        clearTimeout(this.uploadTimer);
+      }
+
+      const delay = this.networkManager.getUploadDelay();
+      if (delay > 0) {
+        this.uploadTimer = setTimeout(() => {
+          if (!this.isUploading && this.hasQueuedData()) {
+            this.uploadData().finally(() => {
+              scheduleNextUpload();
+            });
+          } else {
+            scheduleNextUpload();
+          }
+        }, delay);
+      }
+    };
+
+    scheduleNextUpload();
+  }
+
+  private setupNetworkChangeHandler(): void {
+    this.networkManager.onConnectionChange((online) => {
+      if (online) {
+        console.log('[Revi] Network connection restored, resuming uploads');
+        if (this.hasQueuedData() && !this.isUploading) {
+          // Wait a bit before starting uploads to ensure connection is stable
+          setTimeout(() => {
+            this.uploadData();
+          }, 1000);
+        }
+      } else {
+        console.log('[Revi] Network connection lost, uploads paused');
+      }
+    });
   }
 
   private setupBeforeUnloadHandler(): void {
@@ -73,17 +116,23 @@ export class DataManager {
 
   queueError(error: ErrorEvent): void {
     this.uploadQueue.errors.push(error);
-    this.saveQueueToStorage();
+    this.saveQueueToStorage().catch(err => {
+      console.error('[Revi] Failed to save error to storage:', err);
+    });
   }
 
   queueSessionEvents(events: SessionEvent[]): void {
     this.uploadQueue.sessionEvents.push(...events);
-    this.saveQueueToStorage();
+    this.saveQueueToStorage().catch(err => {
+      console.error('[Revi] Failed to save session events to storage:', err);
+    });
   }
 
   queueNetworkEvents(events: NetworkEvent[]): void {
     this.uploadQueue.networkEvents.push(...events);
-    this.saveQueueToStorage();
+    this.saveQueueToStorage().catch(err => {
+      console.error('[Revi] Failed to save network events to storage:', err);
+    });
   }
 
   private hasQueuedData(): boolean {
@@ -95,29 +144,49 @@ export class DataManager {
   private async uploadData(): Promise<void> {
     if (this.isUploading || !this.hasQueuedData()) return;
 
+    const { online } = this.networkManager.getConnectionStatus();
+    if (!online) {
+      console.log('[Revi] Skipping upload - device is offline');
+      return;
+    }
+
     this.isUploading = true;
     const apiUrl = this.config.apiUrl || 'https://api.revi.dev';
+    const batchSize = this.networkManager.getBatchSize();
 
     try {
-      // Upload errors
+      // Upload errors in batches
       if (this.uploadQueue.errors.length > 0) {
-        await this.uploadErrors(apiUrl, this.uploadQueue.errors);
+        const errorBatches = this.createBatches(this.uploadQueue.errors, batchSize);
+        for (const batch of errorBatches) {
+          await this.uploadErrorsWithRetry(apiUrl, batch);
+        }
         this.uploadQueue.errors = [];
       }
 
-      // Upload session events
+      // Upload session events in batches
       if (this.uploadQueue.sessionEvents.length > 0) {
-        await this.uploadSessionEvents(apiUrl, this.uploadQueue.sessionEvents);
+        const sessionBatches = this.createBatches(this.uploadQueue.sessionEvents, batchSize);
+        for (const batch of sessionBatches) {
+          await this.uploadSessionEventsWithRetry(apiUrl, batch);
+        }
         this.uploadQueue.sessionEvents = [];
       }
 
-      // Upload network events
+      // Upload network events in batches
       if (this.uploadQueue.networkEvents.length > 0) {
-        await this.uploadNetworkEvents(apiUrl, this.uploadQueue.networkEvents);
+        const networkBatches = this.createBatches(this.uploadQueue.networkEvents, batchSize);
+        for (const batch of networkBatches) {
+          await this.uploadNetworkEventsWithRetry(apiUrl, batch);
+        }
         this.uploadQueue.networkEvents = [];
       }
 
-      this.saveQueueToStorage();
+      await this.saveQueueToStorage();
+      
+      // Reset retry attempts on successful upload
+      this.retryAttempts.clear();
+      
     } catch (error) {
       if (this.config.debug) {
         console.error('Revi: Failed to upload data', error);
@@ -126,6 +195,16 @@ export class DataManager {
     } finally {
       this.isUploading = false;
     }
+  }
+
+  private createBatches<T>(items: T[], batchSize: number): T[][] {
+    if (batchSize <= 0) return [];
+    
+    const batches: T[][] = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push(items.slice(i, i + batchSize));
+    }
+    return batches;
   }
 
   private uploadDataSync(): void {
@@ -224,7 +303,7 @@ export class DataManager {
 
   private async uploadNetworkEvents(apiUrl: string, events: NetworkEvent[]): Promise<void> {
     const promises = events.map(event => 
-      fetch(`${this.config.apiUrl}/api/capture/network-event`, {
+      fetch(`${apiUrl}/api/capture/network-event`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -262,21 +341,61 @@ export class DataManager {
     }
   }
 
-  clearQueue(): void {
+  private async uploadErrorsWithRetry(apiUrl: string, errors: ErrorEvent[]): Promise<void> {
+    const key = 'errors';
+    return this.executeWithRetry(key, () => this.uploadErrors(apiUrl, errors));
+  }
+
+  private async uploadSessionEventsWithRetry(apiUrl: string, events: SessionEvent[]): Promise<void> {
+    const key = 'session_events';
+    return this.executeWithRetry(key, () => this.uploadSessionEvents(apiUrl, events));
+  }
+
+  private async uploadNetworkEventsWithRetry(apiUrl: string, events: NetworkEvent[]): Promise<void> {
+    const key = 'network_events';  
+    return this.executeWithRetry(key, () => this.uploadNetworkEvents(apiUrl, events));
+  }
+
+  private async executeWithRetry<T>(key: string, operation: () => Promise<T>): Promise<T> {
+    const currentAttempt = this.retryAttempts.get(key) || 0;
+
+    if (!this.networkManager.shouldRetry(currentAttempt)) {
+      throw new Error(`Max retry attempts exceeded for ${key}`);
+    }
+
+    try {
+      const result = await operation();
+      this.retryAttempts.delete(key); // Success, reset retry count
+      return result;
+    } catch (error) {
+      this.retryAttempts.set(key, currentAttempt + 1);
+      
+      if (this.networkManager.shouldRetry(currentAttempt + 1)) {
+        const delay = this.networkManager.getRetryDelay(currentAttempt + 1);
+        console.log(`[Revi] Upload failed for ${key}, retrying in ${delay}ms (attempt ${currentAttempt + 2})`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.executeWithRetry(key, operation);
+      } else {
+        console.error(`[Revi] Max retry attempts exceeded for ${key}:`, error);
+        throw error;
+      }
+    }
+  }
+
+  async clearQueue(): Promise<void> {
     this.uploadQueue = {
       errors: [],
       sessionEvents: [],
       networkEvents: []
     };
     
-    if (this.storage) {
-      this.storage.removeItem('revi_upload_queue');
-    }
+    await this.storageManager.clearAll();
   }
 
   destroy(): void {
     if (this.uploadTimer) {
-      clearInterval(this.uploadTimer);
+      clearTimeout(this.uploadTimer);
       this.uploadTimer = null;
     }
     

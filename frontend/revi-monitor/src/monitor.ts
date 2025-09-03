@@ -5,11 +5,13 @@ import { PerformanceMonitor } from './performance-monitor';
 import { DataManager } from './data-manager';
 import { UserJourneyTracker } from './user-journey';
 import { SessionReplayManager } from './session-replay';
+import { TraceManager } from './trace-manager';
 import { isBot } from './utils';
 import type { ReviConfig, ErrorEvent, UserContext } from './types';
 
 export class Monitor {
   private config: ReviConfig;
+  private traceManager: TraceManager;
   private errorHandler: ErrorHandler;
   private sessionManager: SessionManager;
   private networkMonitor: NetworkMonitor;
@@ -63,9 +65,13 @@ export class Monitor {
     if (this.isInitialized) return;
 
     try {
-      this.errorHandler = new ErrorHandler(this.config);
-      this.sessionManager = new SessionManager(this.config);
-      this.networkMonitor = new NetworkMonitor(this.config);
+      // Create shared trace manager
+      this.traceManager = new TraceManager();
+      
+      // Initialize components with shared trace manager
+      this.errorHandler = new ErrorHandler(this.config, this.traceManager);
+      this.sessionManager = new SessionManager(this.config, this.traceManager);
+      this.networkMonitor = new NetworkMonitor(this.config, this.traceManager);
       this.performanceMonitor = new PerformanceMonitor(this.config);
       this.dataManager = new DataManager(this.config);
       this.userJourneyTracker = new UserJourneyTracker(this.config);
@@ -276,6 +282,27 @@ export class Monitor {
   }
 
   // Cleanup
+  // Trace context methods
+  getCurrentTraceId(): string | undefined {
+    return this.traceManager?.getCurrentTraceId();
+  }
+
+  getCurrentSpanId(): string | undefined {
+    return this.traceManager?.getCurrentSpanId();
+  }
+
+  getTraceContext(): { traceId?: string; spanId?: string; parentSpanId?: string } {
+    return this.traceManager?.getTraceContext() || {};
+  }
+
+  startSpan(operationName: string): string | undefined {
+    return this.traceManager?.startSpan(operationName);
+  }
+
+  finishSpan(spanId?: string, data?: Record<string, any>): void {
+    this.traceManager?.finishSpan(spanId, data);
+  }
+
   destroy(): void {
     if (!this.isInitialized) return;
 
@@ -295,6 +322,11 @@ export class Monitor {
 
     if (this.userJourneyTracker) {
       this.userJourneyTracker.stopTracking();
+    }
+    
+    // Cleanup trace manager
+    if (this.traceManager) {
+      this.traceManager.cleanupSpanData();
     }
 
     this.isInitialized = false;

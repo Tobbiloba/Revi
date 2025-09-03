@@ -1,21 +1,36 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+'use client';
+
+import * as React from "react";
 import { redirect } from "next/navigation";
 import { SectionCards } from "@/app/dashboard/_components/section-cards";
 import { AnalyticsDashboard } from "@/app/dashboard/_components/analytics-dashboard";
 import { ProjectBreadcrumb } from "@/app/dashboard/_components/project-breadcrumb";
+import apiClient from "@/lib/revi-api";
 
 interface ProjectDashboardPageProps {
   params: Promise<{ projectId: string }>;
 }
 
-export default async function ProjectDashboardPage({ params }: ProjectDashboardPageProps) {
+export default function ProjectDashboardPage({ params }: ProjectDashboardPageProps) {
+  const [projectId, setProjectId] = React.useState<string>('');
+  const [projectIdNum, setProjectIdNum] = React.useState<number>(0);
 
-  const { projectId } = await params;
-  const projectIdNum = parseInt(projectId, 10);
+  React.useEffect(() => {
+    params.then(({ projectId: id }) => {
+      setProjectId(id);
+      const idNum = parseInt(id, 10);
+      if (isNaN(idNum)) {
+        redirect("/dashboard/projects");
+        return;
+      }
+      setProjectIdNum(idNum);
+      // Set API client project ID once for all components
+      apiClient.setProjectId(idNum);
+    });
+  }, [params]);
 
-  if (isNaN(projectIdNum)) {
-    redirect("/dashboard/projects");
+  if (!projectIdNum) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -32,8 +47,8 @@ export default async function ProjectDashboardPage({ params }: ProjectDashboardP
         </div>
         <div className="@container/main flex flex-1 flex-col gap-2">
           <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-            <SectionCards />
-            <AnalyticsDashboard />
+            <SectionCards projectId={projectIdNum} />
+            <AnalyticsDashboard projectId={projectIdNum} />
           </div>
         </div>
       </div>

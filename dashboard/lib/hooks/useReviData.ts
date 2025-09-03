@@ -20,7 +20,7 @@ export const queryKeys = {
   errors: (params: ListErrorsParams) => ['errors', params] as const,
   sessions: (params: ListSessionsParams) => ['sessions', params] as const,
   sessionEvents: (sessionId: string) => ['sessionEvents', sessionId] as const,
-  projectStats: (days: number) => ['projectStats', days] as const,
+  projectStats: (projectId?: number, days: number = 7) => ['projectStats', projectId, days] as const,
   errorById: (errorId: number) => ['error', errorId] as const,
   health: () => ['health'] as const,
   projects: () => ['projects'] as const,
@@ -35,8 +35,9 @@ export function useErrors(
   return useQuery({
     queryKey: queryKeys.errors(params),
     queryFn: () => apiClient.getErrors(params),
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: false, // Prevent unnecessary refetches on mount
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
     ...options,
   });
 }
@@ -57,14 +58,17 @@ export function useSessionEvents(
 
 // Hook for fetching project statistics and dashboard metrics
 export function useProjectStats(
+  projectId?: number,
   days: number = 7,
   options?: Partial<UseQueryOptions<ProjectStats, Error>>
 ) {
   return useQuery({
-    queryKey: queryKeys.projectStats(days),
-    queryFn: () => apiClient.getProjectStats(days),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    queryKey: queryKeys.projectStats(projectId, days),
+    queryFn: () => apiClient.getProjectStats(projectId || apiClient.getProjectId(), days),
+    enabled: !!projectId || !!apiClient.getProjectId(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: false, // Prevent unnecessary refetches on mount
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
     ...options,
   });
 }
@@ -97,41 +101,8 @@ export function useHealth(
   });
 }
 
-// Custom hook for real-time error monitoring
-export function useRealTimeErrors(params: ListErrorsParams = {}) {
-  return useErrors(params, {
-    refetchInterval: 5 * 1000, // Refetch every 5 seconds for real-time
-    refetchIntervalInBackground: true,
-  });
-}
-
-// Custom hook for real-time project stats
-export function useRealTimeProjectStats(days: number = 7) {
-  return useProjectStats(days, {
-    refetchInterval: 10 * 1000, // Refetch every 10 seconds
-    refetchIntervalInBackground: true,
-  });
-}
-
-// Custom hook for dashboard overview data with real-time updates
-export function useDashboardData(days: number = 7) {
-  const statsQuery = useRealTimeProjectStats(days);
-  const recentErrorsQuery = useRealTimeErrors({ 
-    limit: 10,
-    start_date: new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString(),
-  });
-
-  return {
-    stats: statsQuery,
-    recentErrors: recentErrorsQuery,
-    isLoading: statsQuery.isLoading || recentErrorsQuery.isLoading,
-    error: statsQuery.error || recentErrorsQuery.error,
-    refetch: () => {
-      statsQuery.refetch();
-      recentErrorsQuery.refetch();
-    },
-  };
-}
+// Removed real-time hooks - these were causing infinite API calls
+// Components should use the base hooks (useErrors, useProjectStats) directly
 
 // Hook for fetching all projects
 export function useProjects(
@@ -152,7 +123,7 @@ export function useProjectHealth(projectId: number) {
     queryFn: async () => {
       const [errorsResponse, statsResponse] = await Promise.all([
         apiClient.getErrors({ limit: 1 }),
-        apiClient.getProjectStats(7)
+        apiClient.getProjectStats(projectId, 7)
       ]);
       
       return {
@@ -164,8 +135,7 @@ export function useProjectHealth(projectId: number) {
       };
     },
     enabled: !!projectId && projectId > 0,
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // 1 minute
+    staleTime: 5 * 60 * 1000, // 5 minutes - health data doesn't change frequently
   });
 }
 
@@ -234,19 +204,12 @@ export function useSessions(
   return useQuery({
     queryKey: queryKeys.sessions(params),
     queryFn: () => apiClient.getSessions(params),
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
+    staleTime: 5 * 60 * 1000, // 5 minutes
     ...options,
   });
 }
 
-// Custom hook for real-time session monitoring
-export function useRealTimeSessions(params: ListSessionsParams = {}) {
-  return useSessions(params, {
-    refetchInterval: 10 * 1000, // Refetch every 10 seconds for real-time
-    refetchIntervalInBackground: true,
-  });
-}
+// Removed real-time session monitoring - use useSessions directly instead
 
 // Utility hook for invalidating queries
 export function useReviQueryClient() {
@@ -255,7 +218,13 @@ export function useReviQueryClient() {
   return {
     invalidateErrors: () => queryClient.invalidateQueries({ queryKey: ['errors'] }),
     invalidateSessions: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
-    invalidateProjectStats: () => queryClient.invalidateQueries({ queryKey: ['projectStats'] }),
+    invalidateProjectStats: (projectId?: number) => {
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ['projectStats', projectId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['projectStats'] });
+      }
+    },
     invalidateSessionEvents: (sessionId?: string) => 
       queryClient.invalidateQueries({ 
         queryKey: sessionId ? queryKeys.sessionEvents(sessionId) : ['sessionEvents'] 

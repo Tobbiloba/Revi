@@ -1,5 +1,6 @@
 import { generateId } from './utils';
 import type { NetworkEvent, ReviConfig } from './types';
+import { TraceManager } from './trace-manager';
 
 export class NetworkMonitor {
   private config: ReviConfig;
@@ -7,9 +8,11 @@ export class NetworkMonitor {
   private originalFetch: typeof fetch;
   private originalXHROpen: typeof XMLHttpRequest.prototype.open;
   private originalXHRSend: typeof XMLHttpRequest.prototype.send;
+  private traceManager: TraceManager;
 
-  constructor(config: ReviConfig) {
+  constructor(config: ReviConfig, traceManager?: TraceManager) {
     this.config = config;
+    this.traceManager = traceManager || new TraceManager();
     this.originalFetch = window.fetch;
     this.originalXHROpen = XMLHttpRequest.prototype.open;
     this.originalXHRSend = XMLHttpRequest.prototype.send;
@@ -35,6 +38,23 @@ export class NetworkMonitor {
         return await this.originalFetch.apply(window, args);
       }
       
+      // Start a new span for this network request
+      const spanId = this.traceManager.startSpan(`http:${method} ${url}`);
+      
+      // Inject trace headers into the request
+      const traceHeaders = this.traceManager.injectTraceHeaders();
+      const originalHeaders = args[1]?.headers || {};
+      const headers = { ...originalHeaders, ...traceHeaders };
+      
+      // Update request args with trace headers
+      const modifiedArgs: Parameters<typeof fetch> = [
+        args[0],
+        {
+          ...args[1],
+          headers: headers
+        }
+      ];
+      
       let requestSize = 0;
       let requestBody: any;
       
@@ -44,7 +64,7 @@ export class NetworkMonitor {
       }
 
       try {
-        const response = await this.originalFetch.apply(window, args);
+        const response = await this.originalFetch.apply(window, modifiedArgs);
         const endTime = Date.now();
         
         let responseBody: any;
@@ -60,6 +80,24 @@ export class NetworkMonitor {
           }
         }
 
+        // Extract trace context from response headers
+        const responseTrace = this.traceManager.extractTraceFromHeaders(
+          this.extractResponseHeaders(response.headers)
+        );
+        
+        // Correlate with backend trace if available
+        if (responseTrace.traceId) {
+          this.traceManager.correlateWithBackendTrace(responseTrace.traceId, responseTrace.spanId);
+        }
+        
+        // Finish the span
+        this.traceManager.finishSpan(spanId, {
+          statusCode: response.status,
+          responseTime: endTime - startTime
+        });
+        
+        const traceContext = this.traceManager.getTraceContext();
+        
         this.captureNetworkEvent({
           method,
           url,
@@ -67,16 +105,28 @@ export class NetworkMonitor {
           responseTime: endTime - startTime,
           requestSize,
           responseSize,
-          requestHeaders: this.extractHeaders(args[1]?.headers),
+          requestHeaders: this.extractHeaders(headers),
           responseHeaders: this.extractResponseHeaders(response.headers),
           requestBody,
           responseBody,
-          timestamp: startTime
+          timestamp: startTime,
+          traceId: traceContext.traceId,
+          spanId: spanId,
+          parentSpanId: traceContext.parentSpanId
         });
 
         return response;
       } catch (error) {
         const endTime = Date.now();
+        
+        // Finish the span with error
+        this.traceManager.finishSpan(spanId, {
+          statusCode: 0,
+          responseTime: endTime - startTime,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        
+        const traceContext = this.traceManager.getTraceContext();
         
         this.captureNetworkEvent({
           method,
@@ -85,10 +135,12 @@ export class NetworkMonitor {
           responseTime: endTime - startTime,
           requestSize,
           responseSize: 0,
-          requestHeaders: this.extractHeaders(args[1]?.headers),
+          requestHeaders: this.extractHeaders(headers),
           requestBody,
           timestamp: startTime,
-          error: error instanceof Error ? error.message : String(error)
+          traceId: traceContext.traceId,
+          spanId: spanId,
+          parentSpanId: traceContext.parentSpanId
         });
 
         throw error;
@@ -274,18 +326,18 @@ export class NetworkMonitor {
       return false;
     }
     
-    // Don't monitor requests to common localhost development ports that might be the backend
-    const localhostPatterns = [
-      /^https?:\/\/localhost:4000/,
-      /^https?:\/\/127\.0\.0\.1:4000/,
-      /^https?:\/\/localhost:4001/, 
-      /^https?:\/\/127\.0\.0\.1:4001/,
+    // Use configurable development hosts or default patterns
+    const developmentHosts = this.config.developmentHosts || [
+      /^https?:\/\/localhost:\d+/,
+      /^https?:\/\/127\.0\.0\.1:\d+/,
+      /^https?:\/\/0\.0\.0\.0:\d+/,
+      /^https?:\/\/.*\.local:\d+/
     ];
     
-    const matchedPattern = localhostPatterns.find(pattern => pattern.test(url));
+    const matchedPattern = developmentHosts.find(pattern => pattern.test(url));
     if (matchedPattern) {
       if (this.config.debug) {
-        console.log('[Revi Debug] Filtering localhost URL:', url, '(matched pattern:', matchedPattern, ')');
+        console.log('[Revi Debug] Filtering development host URL:', url, '(matched pattern:', matchedPattern, ')');
       }
       return false;
     }
@@ -307,6 +359,17 @@ export class NetworkMonitor {
         console.log('[Revi Debug] Filtering API endpoint:', url, '(matched pattern:', matchedApiPattern, ')');
       }
       return false;
+    }
+    
+    // Check configurable exclude URLs
+    if (this.config.excludeUrls) {
+      const excluded = this.config.excludeUrls.some(pattern => pattern.test(url));
+      if (excluded) {
+        if (this.config.debug) {
+          console.log('[Revi Debug] Filtering excluded URL:', url);
+        }
+        return false;
+      }
     }
     
     // Check privacy configuration if available

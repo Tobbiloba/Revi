@@ -1,11 +1,13 @@
 import type { SessionEvent, ReviConfig } from './types';
+import { TraceManager } from './trace-manager';
 export declare class SessionManager {
     private sessionId;
     private startTime;
     private events;
     private config;
     private storage;
-    constructor(config: ReviConfig);
+    private traceManager?;
+    constructor(config: ReviConfig, traceManager?: TraceManager);
     private getOrCreateSessionId;
     getSessionId(): string;
     private setupEventListeners;

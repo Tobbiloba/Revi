@@ -1,5 +1,6 @@
 'use client';
 
+import React from "react";
 import { IconTrendingDown, IconTrendingUp, IconAlertCircle, IconUsers, IconActivity, IconClock } from "@tabler/icons-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +12,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useDashboardData } from "@/lib/hooks/useReviData";
+import { useProjectStats, useErrors } from "@/lib/hooks/useReviData";
 
-export function SectionCards() {
-  const { stats, recentErrors, isLoading, error } = useDashboardData(7);
-  const isUpdating = stats.isFetching || recentErrors.isFetching;
+interface SectionCardsProps {
+  projectId?: number;
+}
+
+export function SectionCards({ projectId }: SectionCardsProps = {}) {
+  // Stabilize query parameters to prevent infinite refetch loops
+  const queryParams = React.useMemo(() => {
+    // Round down to the nearest hour to prevent constant cache invalidation
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setMinutes(0, 0, 0); // Round to nearest hour
+    
+    return {
+      limit: 10,
+      start_date: sevenDaysAgo.toISOString(),
+    };
+  }, []); // Empty deps array means this only calculates once per component mount
+
+  const { data: stats, isLoading: statsLoading, error: statsError } = useProjectStats(projectId, 7);
+  const { data: recentErrors, isLoading: errorsLoading, error: errorsError } = useErrors(queryParams);
+
+  const isLoading = statsLoading || errorsLoading;
+  const error = statsError || errorsError;
+  // Remove isUpdating since we're not using real-time polling anymore
 
   if (isLoading) {
     return (
@@ -45,8 +67,8 @@ export function SectionCards() {
     );
   }
 
-  const projectStats = stats.data;
-  const errors = recentErrors.data?.errors || [];
+  const projectStats = stats;
+  const errors = recentErrors?.errors || [];
   const totalErrors = projectStats?.totalErrors || 0;
   const errorRate = projectStats?.errorRate || 0;
   const activeSessions = projectStats?.activeSessions || 0;
@@ -57,12 +79,6 @@ export function SectionCards() {
   
   return (
     <div className="space-y-4">
-      {isUpdating && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span>Updating dashboard data...</span>
-        </div>
-      )}
       <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
       <Card className="@container/card">
         <CardHeader>

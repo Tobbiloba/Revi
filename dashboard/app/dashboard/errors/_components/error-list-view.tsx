@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { useRealTimeErrors, useUpdateErrorStatus } from "@/lib/hooks/useReviData";
+import { useErrors, useUpdateErrorStatus } from "@/lib/hooks/useReviData";
 import { useNotifications } from "@/components/ui/notification-provider";
 import { ErrorListSkeleton } from "@/components/ui/loading-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,7 +98,7 @@ export function ErrorListView() {
     return params;
   }, [page, filters]);
 
-  const { data, isLoading, error, refetch, isFetching } = useRealTimeErrors(queryParams);
+  const { data, isLoading, error, refetch, isFetching } = useErrors(queryParams);
 
   // Filter and sort errors on the frontend - moved before early returns
   const filteredAndSortedErrors = useMemo(() => {

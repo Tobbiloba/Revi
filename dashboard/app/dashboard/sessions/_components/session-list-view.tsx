@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { useRealTimeSessions } from "@/lib/hooks/useReviData";
+import { useSessions } from "@/lib/hooks/useReviData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,7 @@ export function SessionListView() {
     return params;
   }, [page, filters]);
 
-  const { data, isLoading, error, refetch, isFetching } = useRealTimeSessions(queryParams);
+  const { data, isLoading, error, refetch, isFetching } = useSessions(queryParams);
 
   // Filter sessions by search term on the frontend
   const filteredSessions = useMemo(() => {

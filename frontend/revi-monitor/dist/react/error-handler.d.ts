@@ -1,9 +1,11 @@
 import type { Breadcrumb, ReviConfig } from './types';
+import { TraceManager } from './trace-manager';
 export declare class ErrorHandler {
     private config;
     private breadcrumbs;
     private userContext;
-    constructor(config: ReviConfig);
+    private traceManager;
+    constructor(config: ReviConfig, traceManager?: TraceManager);
     private setupGlobalHandlers;
     captureError(errorData: {
         message: string;

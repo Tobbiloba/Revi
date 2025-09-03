@@ -1,11 +1,13 @@
 import type { NetworkEvent, ReviConfig } from './types';
+import { TraceManager } from './trace-manager';
 export declare class NetworkMonitor {
     private config;
     private events;
     private originalFetch;
     private originalXHROpen;
     private originalXHRSend;
-    constructor(config: ReviConfig);
+    private traceManager;
+    constructor(config: ReviConfig, traceManager?: TraceManager);
     private setupInterceptors;
     private interceptFetch;
     private interceptXHR;

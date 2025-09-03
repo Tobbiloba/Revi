@@ -13,7 +13,8 @@ export default [
     output: {
       file: 'dist/index.esm.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     plugins: [
       resolve({
@@ -35,7 +36,8 @@ export default [
     output: {
       file: 'dist/index.js',
       format: 'cjs',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     plugins: [
       resolve({
@@ -56,7 +58,8 @@ export default [
     output: {
       file: 'dist/react/index.esm.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     plugins: [
       resolve({
@@ -79,7 +82,8 @@ export default [
     output: {
       file: 'dist/react/index.js',
       format: 'cjs',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     plugins: [
       resolve({
@@ -100,7 +104,8 @@ export default [
       file: 'dist/revi-monitor.umd.js',
       format: 'umd',
       name: 'ReviMonitor',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     plugins: [
       resolve({

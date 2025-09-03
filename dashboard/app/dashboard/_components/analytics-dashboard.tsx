@@ -31,10 +31,17 @@ import {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
-export function AnalyticsDashboard() {
+interface AnalyticsDashboardProps {
+  projectId?: number;
+}
+
+export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) {
   const [timeRange, setTimeRange] = React.useState("7d");
   const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
-  const { data: stats, isLoading, error, refetch } = useProjectStats(days);
+
+  // Removed useEffect - projectId is now set at page level to prevent race conditions
+
+  const { data: stats, isLoading, error, refetch } = useProjectStats(projectId, days);
 
   if (isLoading) {
     return (

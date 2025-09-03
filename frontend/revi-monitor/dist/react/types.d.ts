@@ -1,7 +1,7 @@
 export interface ReviConfig {
     apiKey: string;
     apiUrl?: string;
-    environment?: string;
+    environment?: 'development' | 'staging' | 'production' | string;
     userId?: string;
     release?: string;
     debug?: boolean;
@@ -10,6 +10,16 @@ export interface ReviConfig {
     maxBreadcrumbs?: number;
     beforeSend?: (event: ErrorEvent) => ErrorEvent | null;
     beforeSendSession?: (session: SessionEvent) => SessionEvent | null;
+    developmentHosts?: RegExp[];
+    excludeUrls?: RegExp[];
+    sampling?: {
+        errorSampleRate?: number;
+        sessionSampleRate?: number;
+        performanceSampleRate?: number;
+        networkSampleRate?: number;
+        replaySampleRate?: number;
+        debugSampleRate?: number;
+    };
     privacy?: {
         maskInputs?: boolean;
         maskPasswords?: boolean;
@@ -61,12 +71,17 @@ export interface ErrorEvent {
     extra?: Record<string, any>;
     breadcrumbs?: Breadcrumb[];
     level: 'error' | 'warning' | 'info' | 'debug';
+    traceId?: string;
+    spanId?: string;
+    parentSpanId?: string;
 }
 export interface SessionEvent {
     sessionId: string;
     timestamp: number;
     type: string;
     data: Record<string, any>;
+    traceId?: string;
+    spanId?: string;
 }
 export interface NetworkEvent {
     sessionId: string;
@@ -81,6 +96,9 @@ export interface NetworkEvent {
     responseHeaders?: Record<string, string>;
     requestBody?: any;
     responseBody?: any;
+    traceId?: string;
+    spanId?: string;
+    parentSpanId?: string;
 }
 export interface Breadcrumb {
     timestamp: number;
