@@ -30,6 +30,11 @@ export class NetworkMonitor {
       const url = typeof args[0] === 'string' ? args[0] : args[0].url;
       const method = (args[1]?.method || 'GET').toUpperCase();
       
+      // Check if this request should be monitored
+      if (!this.shouldMonitorRequest(url)) {
+        return await this.originalFetch.apply(window, args);
+      }
+      
       let requestSize = 0;
       let requestBody: any;
       
@@ -98,7 +103,8 @@ export class NetworkMonitor {
       (this as any)._reviData = {
         method: method.toUpperCase(),
         url,
-        startTime: Date.now()
+        startTime: Date.now(),
+        shouldMonitor: self.shouldMonitorRequest(url)
       };
       
       return self.originalXHROpen.call(this, method, url, ...args);
@@ -106,7 +112,7 @@ export class NetworkMonitor {
 
     XMLHttpRequest.prototype.send = function(body?: any) {
       const reviData = (this as any)._reviData;
-      if (!reviData) {
+      if (!reviData || !reviData.shouldMonitor) {
         return self.originalXHRSend.call(this, body);
       }
 
@@ -240,6 +246,98 @@ export class NetworkMonitor {
     ];
     
     return allowedPatterns.some(pattern => pattern.test(url));
+  }
+
+  private shouldMonitorRequest(url: string): boolean {
+    // Don't monitor the SDK's own API calls to prevent feedback loops
+    const apiUrl = this.config.apiUrl || 'https://api.revi.dev';
+    
+    // Remove trailing slash for consistent comparison
+    const normalizedApiUrl = apiUrl.replace(/\/$/, '');
+    const normalizedUrl = url.replace(/\/$/, '');
+    
+    // Debug logging to identify filtering issues
+    if (this.config.debug) {
+      console.log('[Revi Debug] Network filter check:', { 
+        url, 
+        normalizedUrl, 
+        apiUrl, 
+        normalizedApiUrl 
+      });
+    }
+    
+    // Exclude any requests to the Revi API backend
+    if (normalizedUrl.startsWith(normalizedApiUrl)) {
+      if (this.config.debug) {
+        console.log('[Revi Debug] Filtering API URL:', url, '(matches configured apiUrl)');
+      }
+      return false;
+    }
+    
+    // Don't monitor requests to common localhost development ports that might be the backend
+    const localhostPatterns = [
+      /^https?:\/\/localhost:4000/,
+      /^https?:\/\/127\.0\.0\.1:4000/,
+      /^https?:\/\/localhost:4001/, 
+      /^https?:\/\/127\.0\.0\.1:4001/,
+    ];
+    
+    const matchedPattern = localhostPatterns.find(pattern => pattern.test(url));
+    if (matchedPattern) {
+      if (this.config.debug) {
+        console.log('[Revi Debug] Filtering localhost URL:', url, '(matched pattern:', matchedPattern, ')');
+      }
+      return false;
+    }
+    
+    // Additional API endpoint patterns to filter
+    const apiEndpointPatterns = [
+      /\/api\/capture\//,
+      /\/api\/errors/,
+      /\/api\/session/,
+      /\/api\/projects/,
+      /\/api\/database/,
+      /\/api\/analytics/,
+      /\/health$/,
+    ];
+    
+    const matchedApiPattern = apiEndpointPatterns.find(pattern => pattern.test(url));
+    if (matchedApiPattern) {
+      if (this.config.debug) {
+        console.log('[Revi Debug] Filtering API endpoint:', url, '(matched pattern:', matchedApiPattern, ')');
+      }
+      return false;
+    }
+    
+    // Check privacy configuration if available
+    if (this.config.privacy?.denyUrls) {
+      const denied = this.config.privacy.denyUrls.some(pattern => {
+        const regex = new RegExp(pattern);
+        return regex.test(url);
+      });
+      if (denied) {
+        if (this.config.debug) {
+          console.log('[Revi Debug] Filtering denied URL:', url);
+        }
+        return false;
+      }
+    }
+    
+    if (this.config.privacy?.allowUrls) {
+      const allowed = this.config.privacy.allowUrls.some(pattern => {
+        const regex = new RegExp(pattern);
+        return regex.test(url);
+      });
+      if (this.config.debug) {
+        console.log('[Revi Debug] Allow list result for:', url, '- allowed:', allowed);
+      }
+      return allowed;
+    }
+    
+    if (this.config.debug) {
+      console.log('[Revi Debug] Monitoring URL:', url, '(no filters matched)');
+    }
+    return true;
   }
 
   private captureNetworkEvent(data: Partial<NetworkEvent> & { method: string; url: string; timestamp: number }): void {

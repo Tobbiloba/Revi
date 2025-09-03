@@ -3,6 +3,8 @@ import { SessionManager } from './session';
 import { NetworkMonitor } from './network-monitor';
 import { PerformanceMonitor } from './performance-monitor';
 import { DataManager } from './data-manager';
+import { UserJourneyTracker } from './user-journey';
+import { SessionReplayManager } from './session-replay';
 import { isBot } from './utils';
 import type { ReviConfig, ErrorEvent, UserContext } from './types';
 
@@ -13,11 +15,13 @@ export class Monitor {
   private networkMonitor: NetworkMonitor;
   private performanceMonitor: PerformanceMonitor;
   private dataManager: DataManager;
+  private userJourneyTracker: UserJourneyTracker;
+  private sessionReplayManager: SessionReplayManager;
   private isInitialized = false;
 
   constructor(config: ReviConfig) {
     this.config = {
-      apiUrl: 'http://localhost:4000',
+      apiUrl: process.env.REVI_API_URL || 'https://api.revi.dev',
       environment: 'production',
       debug: false,
       sampleRate: 1.0,
@@ -64,8 +68,16 @@ export class Monitor {
       this.networkMonitor = new NetworkMonitor(this.config);
       this.performanceMonitor = new PerformanceMonitor(this.config);
       this.dataManager = new DataManager(this.config);
+      this.userJourneyTracker = new UserJourneyTracker(this.config);
+      this.sessionReplayManager = new SessionReplayManager(this.config, this.sessionManager.getSessionId());
 
       this.setupPeriodicFlush();
+      
+      // Start session replay if enabled
+      if (this.config.replay?.enabled) {
+        this.sessionReplayManager.startRecording();
+      }
+      
       this.isInitialized = true;
 
       if (this.config.debug) {
@@ -114,6 +126,15 @@ export class Monitor {
       };
 
       this.dataManager.queueError(errorEvent);
+      
+      // Track error in user journey
+      if (this.userJourneyTracker) {
+        this.userJourneyTracker.trackError(error, {
+          level: options.level,
+          tags: options.tags,
+          extra: options.extra
+        });
+      }
     }
 
     return errorId;
@@ -172,6 +193,8 @@ export class Monitor {
 
     this.config.userId = user.id;
     this.errorHandler.setUserContext(user);
+    this.userJourneyTracker.setUserId(user.id || '');
+    this.userJourneyTracker.startTracking(user.id);
   }
 
   setTags(tags: Record<string, string>): void {
@@ -213,6 +236,22 @@ export class Monitor {
     return this.performanceMonitor.getWebVitals();
   }
 
+  // Session Replay methods
+  startSessionReplay(): void {
+    if (!this.isInitialized || !this.sessionReplayManager) return;
+    this.sessionReplayManager.startRecording();
+  }
+
+  stopSessionReplay(): void {
+    if (!this.isInitialized || !this.sessionReplayManager) return;
+    this.sessionReplayManager.stopRecording();
+  }
+
+  getSessionReplayData() {
+    if (!this.isInitialized || !this.sessionReplayManager) return null;
+    return this.sessionReplayManager.getReplayData();
+  }
+
   // Data management
   flush(): void {
     if (!this.isInitialized) return;
@@ -248,6 +287,14 @@ export class Monitor {
     
     if (this.dataManager) {
       this.dataManager.destroy();
+    }
+
+    if (this.sessionReplayManager) {
+      this.sessionReplayManager.stopRecording();
+    }
+
+    if (this.userJourneyTracker) {
+      this.userJourneyTracker.stopTracking();
     }
 
     this.isInitialized = false;

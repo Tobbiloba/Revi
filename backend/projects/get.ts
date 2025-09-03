@@ -14,7 +14,7 @@ export interface Project {
 }
 
 // Retrieves project details by ID.
-export const get = api<GetProjectParams, Project>(
+export const get = api<GetProjectParams, { success: true; project: Project }>(
   { expose: true, method: "GET", path: "/api/projects/:id" },
   async (params) => {
     const project = await db.queryRow<Project>`
@@ -27,6 +27,6 @@ export const get = api<GetProjectParams, Project>(
       throw APIError.notFound("project not found");
     }
     
-    return project;
+    return { success: true, project };
   }
 );

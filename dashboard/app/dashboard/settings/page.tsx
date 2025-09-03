@@ -71,7 +71,7 @@ function SettingsContent() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const { data: organizations } = authClient.useListOrganizations();
+  // const { data: organizations } = authClient.useListOrganizations(); // TODO: Implement organization management
 
   // Handle URL tab parameter
   useEffect(() => {
@@ -92,16 +92,16 @@ function SettingsContent() {
           setEmail(session.data.user.email || "");
         }
 
-        // Try to fetch orders and customer state with better error handling
+        // TODO: Implement billing integration
         try {
-          const ordersResponse = await authClient.customer.orders.list({});
-
-          if (ordersResponse.data) {
-            setOrders(ordersResponse.data as unknown as OrdersResponse);
-          } else {
-            console.log("No orders found or customer not created yet");
-            setOrders(null);
-          }
+          // const ordersResponse = await authClient.customer.orders.list({});
+          // if (ordersResponse.data) {
+          //   setOrders(ordersResponse.data as unknown as OrdersResponse);
+          // } else {
+          //   console.log("No orders found or customer not created yet");
+          //   setOrders(null);
+          // }
+          setOrders(null);
         } catch (orderError) {
           console.log(
             "Orders fetch failed - customer may not exist in Polar yet:",
@@ -111,10 +111,12 @@ function SettingsContent() {
         }
 
         try {
-          const { data: customerState } = await authClient.customer.state();
-          console.log("customerState", customerState);
+          // const { data: customerState } = await authClient.customer.state();
+          // console.log("customerState", customerState);
+          // TODO: Implement customer state management
         } catch (customerError) {
           console.log("Customer state fetch failed:", customerError);
+          // TODO: Implement customer error handling
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -124,7 +126,7 @@ function SettingsContent() {
     };
 
     fetchData();
-  }, [organizations]);
+  }, []);
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
@@ -406,7 +408,8 @@ function SettingsContent() {
                 variant="outline"
                 onClick={async () => {
                   try {
-                    await authClient.customer.portal();
+                    // await authClient.customer.portal();
+                    console.log("Customer portal not implemented yet");
                   } catch (error) {
                     console.error("Failed to open customer portal:", error);
                     // You could add a toast notification here

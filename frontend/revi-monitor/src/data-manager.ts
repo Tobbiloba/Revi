@@ -146,7 +146,8 @@ export class DataManager {
           events: this.uploadQueue.sessionEvents.map(e => ({
             event_type: e.type,
             data: e.data,
-            timestamp: new Date(e.timestamp)
+            timestamp: e.timestamp,
+            session_id: e.sessionId
           }))
         });
         navigator.sendBeacon(`${apiUrl}/api/capture/session-event`, payload);
@@ -210,7 +211,8 @@ export class DataManager {
         events: events.map(event => ({
           event_type: event.type,
           data: event.data,
-          timestamp: new Date(event.timestamp)
+          timestamp: event.timestamp,
+          session_id: event.sessionId
         }))
       })
     });
@@ -235,16 +237,17 @@ export class DataManager {
             url: event.url,
             status_code: event.statusCode,
             response_time: event.responseTime,
-            timestamp: new Date(event.timestamp),
+            timestamp: event.timestamp,
+            session_id: event.sessionId,
             request_data: {
-              headers: event.requestHeaders,
-              body: event.requestBody,
-              size: event.requestSize
+              headers: event.requestHeaders || {},
+              body: event.requestBody || null,
+              size: event.requestSize || 0
             },
             response_data: {
-              headers: event.responseHeaders,
-              body: event.responseBody,
-              size: event.responseSize
+              headers: event.responseHeaders || {},
+              body: event.responseBody || null,
+              size: event.responseSize || 0
             }
           }]
         })

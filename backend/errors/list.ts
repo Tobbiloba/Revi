@@ -25,6 +25,7 @@ export interface ErrorWithSession {
 }
 
 export interface ListErrorsResponse {
+  success: true;
   errors: ErrorWithSession[];
   total: number;
   page: number;
@@ -88,6 +89,7 @@ export const listErrors = api<ListErrorsParams, ListErrorsResponse>(
     const total = countResult?.total || 0;
     
     return {
+      success: true,
       errors: errors.map(error => ({
         ...error,
         metadata: typeof error.metadata === 'string' ? JSON.parse(error.metadata) : error.metadata,

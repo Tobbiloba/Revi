@@ -15,7 +15,7 @@ export interface Project {
 }
 
 // Creates a new project and returns it with the generated API key.
-export const create = api<CreateProjectRequest, Project>(
+export const create = api<CreateProjectRequest, { success: true; project: Project }>(
   { expose: true, method: "POST", path: "/api/projects" },
   async (req) => {
     const apiKey = generateApiKey();
@@ -30,7 +30,7 @@ export const create = api<CreateProjectRequest, Project>(
       throw new Error("Failed to create project");
     }
     
-    return project;
+    return { success: true, project };
   }
 );
 

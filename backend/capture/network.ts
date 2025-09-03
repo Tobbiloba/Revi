@@ -56,6 +56,9 @@ export const captureNetworkEvent = api<CaptureNetworkEventParams, CaptureNetwork
     await ensureSessionExists(projectId, req.session_id);
     
     for (const eventData of eventsToProcess) {
+      // Convert timestamp to Date object to avoid type conversion issues
+      const timestamp = new Date(eventData.timestamp || Date.now());
+      
       const result = await db.queryRow<{ id: number }>`
         INSERT INTO network_events (
           session_id, method, url, status_code, response_time, 
@@ -63,8 +66,8 @@ export const captureNetworkEvent = api<CaptureNetworkEventParams, CaptureNetwork
         )
         VALUES (
           ${eventData.session_id}, ${eventData.method}, ${eventData.url},
-          ${eventData.status_code}, ${eventData.response_time},
-          to_timestamp(${eventData.timestamp || Date.now()} / 1000.0),
+          ${eventData.status_code || null}, ${eventData.response_time || null},
+          ${timestamp},
           ${JSON.stringify(eventData.request_data || {})},
           ${JSON.stringify(eventData.response_data || {})}
         )

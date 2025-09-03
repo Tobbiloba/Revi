@@ -44,20 +44,44 @@ export const captureSessionEvent = api<CaptureSessionEventParams, CaptureSession
     await ensureSessionExists(projectId, req.session_id);
     
     for (const eventData of eventsToProcess) {
-      const result = await db.queryRow<{ id: number }>`
-        INSERT INTO session_events (
-          session_id, event_type, data, timestamp
-        )
-        VALUES (
-          ${eventData.session_id}, ${eventData.event_type}, 
-          ${JSON.stringify(eventData.data)}, 
-          to_timestamp(${eventData.timestamp || Date.now()} / 1000.0)
-        )
-        RETURNING id
-      `;
-      
-      if (result) {
-        eventIds.push(result.id);
+      try {
+        // Validate and convert timestamp to Date object
+        let timestamp: Date;
+        if (eventData.timestamp) {
+          // Handle both number (unix timestamp) and ISO string formats
+          if (typeof eventData.timestamp === 'number') {
+            timestamp = new Date(eventData.timestamp);
+          } else if (typeof eventData.timestamp === 'string') {
+            timestamp = new Date(eventData.timestamp);
+          } else {
+            timestamp = new Date();
+          }
+        } else {
+          timestamp = new Date();
+        }
+
+        // Ensure data is valid JSON object
+        const eventDataJson = eventData.data || {};
+        
+        const result = await db.queryRow<{ id: number }>`
+          INSERT INTO session_events (
+            session_id, event_type, data, timestamp
+          )
+          VALUES (
+            ${eventData.session_id}, ${eventData.event_type}, 
+            ${eventDataJson}, 
+            ${timestamp}
+          )
+          RETURNING id
+        `;
+        
+        if (result) {
+          eventIds.push(result.id);
+        }
+      } catch (error) {
+        console.error(`Failed to insert session event:`, error, eventData);
+        // Continue processing other events rather than failing completely
+        throw APIError.internal(`Failed to save session event: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
     

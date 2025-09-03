@@ -1,12 +1,16 @@
 import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
-import { ThemeProvider } from "../components/provider";
+import { ThemeProvider, QueryProvider } from "../components/provider";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
+import { Menubar } from "@/components/layout/home/navbar";
+import ErrorBoundary from "@/components/error-boundary";
+import Footer from "@/components/layout/home/footer";
+import { NotificationProvider } from "@/components/ui/notification-provider";
 export const metadata: Metadata = {
-  title: "Next.js Starter Kit - Launch Your SAAS",
+  title: "Revi - Error Monitoring & Session Replay",
   description:
-    "A modern, full-stack Next.js starter kit with authentication, payments, and dashboard. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
+    "Modern error monitoring and session replay platform. Track, analyze, and resolve issues faster with real-time insights and comprehensive debugging tools.",
   openGraph: {
     title: "Next.js Starter Kit",
     description:
@@ -33,18 +37,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-[-apple-system,BlinkMacSystemFont]antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          forcedTheme="light"
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-          <Analytics />
-        </ThemeProvider>
+      <body className="font-neue-montreal antialiased bg-black text-white">
+        <QueryProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            forcedTheme="light"
+            disableTransitionOnChange
+          >
+            <NotificationProvider>
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+              <Toaster />
+              <Analytics />
+            </NotificationProvider>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

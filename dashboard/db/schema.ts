@@ -2,8 +2,10 @@ import {
   boolean,
   integer,
   pgTable,
+  serial,
   text,
   timestamp,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 // Better Auth Tables
@@ -82,4 +84,56 @@ export const subscription = pgTable("subscription", {
   metadata: text("metadata"), // JSON string
   customFieldData: text("customFieldData"), // JSON string
   userId: text("userId").references(() => user.id),
+});
+
+// Revi Monitoring Tables
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  apiKey: text("api_key").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  userId: text("user_id").references(() => user.id),
+});
+
+export const reviSessions = pgTable("revi_sessions", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").notNull(),
+  userId: text("user_id"),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  endedAt: timestamp("ended_at"),
+  metadata: jsonb("metadata"),
+});
+
+export const errors = pgTable("errors", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  stackTrace: text("stack_trace"),
+  url: text("url"),
+  userAgent: text("user_agent"),
+  sessionId: text("session_id"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  metadata: jsonb("metadata"),
+});
+
+export const sessionEvents = pgTable("session_events", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  eventType: text("event_type").notNull(),
+  data: jsonb("data").notNull(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+});
+
+export const networkEvents = pgTable("network_events", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  method: text("method").notNull(),
+  url: text("url").notNull(),
+  statusCode: integer("status_code"),
+  responseTime: integer("response_time"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  requestData: jsonb("request_data"),
+  responseData: jsonb("response_data"),
 });

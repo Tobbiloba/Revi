@@ -19,12 +19,3 @@ declare global {
     Revi?: any;
   }
 }
-
-// Auto-initialize if global config is present
-if (typeof window !== 'undefined' && window.Revi) {
-  const config = window.Revi;
-  if (config.apiKey) {
-    const { Monitor } = require('./monitor');
-    window.Revi = new Monitor(config);
-  }
-}

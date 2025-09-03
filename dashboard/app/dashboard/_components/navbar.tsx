@@ -11,28 +11,31 @@ import {
 } from "@/components/ui/sheet";
 import UserProfile from "@/components/user-profile";
 import {
-  Brush,
   HomeIcon,
-  LucideGitBranchPlus,
-  MonitorSmartphone,
+  AlertTriangle,
+  Activity,
+  FolderOpen,
+  Settings,
+  Menu,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode } from "react";
+import { ProjectSelector } from "./project-selector";
 
 export default function DashboardTopNav({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 lg:h-[52px] items-center gap-4 border-b px-3">
+      <header className="flex h-14 lg:h-[52px] items-center gap-4 border-b border-lime-500/20 px-3">
         <Dialog>
           <SheetTrigger className="min-[1024px]:hidden p-2 transition">
-            <Link prefetch={true} href="/dashboard">
-              <span className="sr-only">Home</span>
-            </Link>
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle menu</span>
           </SheetTrigger>
           <SheetContent side="left">
             <SheetHeader>
               <Link prefetch={true} href="/">
-                <SheetTitle>Pass Builder</SheetTitle>
+                <SheetTitle>Revi Dashboard</SheetTitle>
               </Link>
             </SheetHeader>
             <div className="flex flex-col space-y-3 mt-[1rem]">
@@ -45,34 +48,58 @@ export default function DashboardTopNav({ children }: { children: ReactNode }) {
                 </Link>
               </DialogClose>
               <DialogClose asChild>
-                <Link prefetch={true} href="/dashboard/create">
+                <Link prefetch={true} href="/dashboard/projects">
                   <Button variant="outline" className="w-full">
-                    <Brush className="mr-2 h-4 w-4" />
-                    Create Pass
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Projects
                   </Button>
                 </Link>
               </DialogClose>
               <DialogClose asChild>
-                <Link prefetch={true} href="/dashboard/notifications">
+                <Link prefetch={true} href="/dashboard/project/settings">
                   <Button variant="outline" className="w-full">
-                    <MonitorSmartphone className="mr-2 h-4 w-4" />
-                    Notifications
+                    <Settings className="mr-2 h-4 w-4" />
+                    Project Settings
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link prefetch={true} href="/dashboard/errors">
+                  <Button variant="outline" className="w-full">
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Errors
+                  </Button>
+                </Link>
+              </DialogClose>
+              <DialogClose asChild>
+                <Link prefetch={true} href="/dashboard/sessions">
+                  <Button variant="outline" className="w-full">
+                    <Activity className="mr-2 h-4 w-4" />
+                    Sessions
                   </Button>
                 </Link>
               </DialogClose>
               <Separator className="my-3" />
               <DialogClose asChild>
-                <Link prefetch={true} href="/dashboard/analytics">
+                <Link prefetch={true} href="/dashboard/settings">
                   <Button variant="outline" className="w-full">
-                    <LucideGitBranchPlus className="mr-2 h-4 w-4" />
-                    Analytics
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
                   </Button>
                 </Link>
               </DialogClose>
             </div>
           </SheetContent>
         </Dialog>
-        <div className="flex justify-center items-center gap-2 ml-auto">
+        
+        <div className="flex justify-center items-center gap-4 ml-auto">
+          <Link href="/dashboard/projects/create">
+            <Button variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Project
+            </Button>
+          </Link>
+          <ProjectSelector />
           <UserProfile mini={true} />
         </div>
       </header>

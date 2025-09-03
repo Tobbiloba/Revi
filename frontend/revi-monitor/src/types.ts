@@ -28,6 +28,19 @@ export interface ReviConfig {
     maskAllText?: boolean;
     blockSelector?: string;
     maskSelector?: string;
+    maxConsoleEntries?: number;
+    captureStackTrace?: boolean;
+    serializeObjects?: boolean;
+    maxObjectDepth?: number;
+    maxStringLength?: number;
+    ignoredConsoleLevels?: string[];
+    heatmaps?: {
+      enabled?: boolean;
+      radius?: number;
+      maxIntensity?: number;
+      blur?: number;
+      maxOpacity?: number;
+    };
   };
 }
 

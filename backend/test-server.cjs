@@ -315,13 +315,213 @@ app.get('/api/session/:sessionId/events', async (req, res) => {
   }
 });
 
+// Generate API key helper
+function generateApiKey() {
+  const crypto = require('crypto');
+  return `revi_${crypto.randomBytes(32).toString('hex')}`;
+}
+
+// Create project endpoint
+app.post('/api/projects', async (req, res) => {
+  try {
+    const { name } = req.body;
+    
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Project name is required and must be a non-empty string' 
+      });
+    }
+    
+    const apiKey = generateApiKey();
+    
+    const result = await db.query(`
+      INSERT INTO projects (name, api_key, updated_at)
+      VALUES ($1, $2, NOW())
+      RETURNING id, name, api_key, created_at, updated_at
+    `, [name.trim(), apiKey]);
+    
+    if (result.rows.length === 0) {
+      throw new Error('Failed to create project');
+    }
+    
+    res.status(201).json({
+      success: true,
+      project: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Project creation failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Get project endpoint
+app.get('/api/projects/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await db.query(`
+      SELECT id, name, api_key, created_at, updated_at
+      FROM projects
+      WHERE id = $1
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Project not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      project: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Project retrieval failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// List projects endpoint (for user project management)
+app.get('/api/projects', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, name, api_key, created_at, updated_at
+      FROM projects
+      ORDER BY created_at DESC
+    `);
+    
+    res.json({
+      success: true,
+      projects: result.rows
+    });
+    
+  } catch (error) {
+    console.error('Projects listing failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Project stats endpoint
+app.get('/api/projects/:projectId/stats', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const days = parseInt(req.query.days) || 7;
+    
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+    
+    // Get total error count for the period
+    const totalErrorsResult = await db.query(`
+      SELECT COUNT(*) as count
+      FROM errors
+      WHERE project_id = $1
+      AND timestamp >= $2
+      AND timestamp <= $3
+    `, [projectId, startDate, endDate]);
+    
+    const totalErrors = parseInt(totalErrorsResult.rows[0].count) || 0;
+    
+    // Calculate error rate (errors per day)
+    const errorRate = Math.round((totalErrors / days) * 100) / 100;
+    
+    // Get unique active sessions count
+    const activeSessionsResult = await db.query(`
+      SELECT COUNT(DISTINCT session_id) as count
+      FROM sessions
+      WHERE project_id = $1
+      AND started_at >= $2
+      AND started_at <= $3
+    `, [projectId, startDate, endDate]);
+    
+    const activeSessions = parseInt(activeSessionsResult.rows[0].count) || 0;
+    
+    // Get top errors by frequency
+    const topErrorsResult = await db.query(`
+      SELECT 
+        message,
+        COUNT(*) as count,
+        MAX(timestamp) as last_seen
+      FROM errors
+      WHERE project_id = $1
+      AND timestamp >= $2
+      AND timestamp <= $3
+      GROUP BY message
+      ORDER BY count DESC
+      LIMIT 10
+    `, [projectId, startDate, endDate]);
+    
+    const topErrors = topErrorsResult.rows.map(row => ({
+      message: row.message,
+      count: parseInt(row.count),
+      lastSeen: new Date(row.last_seen)
+    }));
+    
+    // Create error trend data (errors per day)
+    const trendData = [];
+    
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(endDate.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+      
+      const dayErrorsResult = await db.query(`
+        SELECT COUNT(*) as count
+        FROM errors
+        WHERE project_id = $1
+        AND timestamp >= $2
+        AND timestamp <= $3
+      `, [projectId, dayStart, dayEnd]);
+      
+      trendData.unshift({
+        date: dateStr,
+        count: parseInt(dayErrorsResult.rows[0].count) || 0
+      });
+    }
+    
+    res.json({
+      totalErrors,
+      errorRate,
+      activeSessions,
+      topErrors,
+      errorTrend: trendData
+    });
+    
+  } catch (error) {
+    console.error('Project stats failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Test server running at http://localhost:${port}`);
   console.log('Available endpoints:');
   console.log('  GET  /health');
+  console.log('  POST /api/projects - Create new project');
+  console.log('  GET  /api/projects - List all projects');  
+  console.log('  GET  /api/projects/:id - Get project details');
   console.log('  POST /api/capture/error');
   console.log('  POST /api/capture/session-event');
   console.log('  POST /api/capture/network-event');
   console.log('  GET  /api/errors/:projectId');
   console.log('  GET  /api/session/:sessionId/events');
+  console.log('  GET  /api/projects/:projectId/stats');
 });
