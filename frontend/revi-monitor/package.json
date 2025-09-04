@@ -1,7 +1,7 @@
 {
   "name": "revi-monitor",
   "version": "1.0.0",
-  "description": "Client-side SDK for error monitoring and session replay",
+  "description": "Resilient error monitoring and session replay SDK with advanced retry mechanisms, circuit breakers, and intelligent offline storage",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -25,8 +25,14 @@
     "build": "rollup -c",
     "dev": "rollup -c -w",
     "test": "vitest",
+    "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
+    "test:resilience": "vitest run src/__tests__/resilience.test.ts",
+    "test:benchmarks": "vitest run src/__tests__/resilience-benchmarks.ts",
+    "test:manual": "node -r esbuild-register src/simple-test-runner.ts",
+    "test:all": "npm run test:resilience && npm run test:benchmarks",
     "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -34,7 +40,13 @@
     "session-replay",
     "performance",
     "debugging",
-    "analytics"
+    "analytics",
+    "resilience",
+    "retry",
+    "circuit-breaker",
+    "idempotency",
+    "offline-storage",
+    "fault-tolerance"
   ],
   "author": "Revi Team",
   "license": "MIT",
@@ -59,6 +71,9 @@
     "@rollup/plugin-typescript": "^11.1.5",
     "@types/node": "^20.10.0",
     "@types/react": "^19.0.0",
+    "@vitest/coverage-v8": "^1.0.4",
+    "esbuild-register": "^3.5.0",
+    "jsdom": "^23.0.0",
     "react": "^19.0.0",
     "rollup": "^4.6.1",
     "tslib": "^2.8.1",

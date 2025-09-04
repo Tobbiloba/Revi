@@ -47,6 +47,33 @@ class StatsCacheManager {
   }
   
   /**
+   * Generic cache get method
+   */
+  async get(key: string): Promise<any | null> {
+    try {
+      const cached = await this.redis.get(key);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+      return null;
+    } catch (error) {
+      console.error('Redis cache error (get):', error);
+      return null;
+    }
+  }
+
+  /**
+   * Generic cache set method
+   */
+  async set(key: string, value: any, ttlSeconds: number = 300): Promise<void> {
+    try {
+      await this.redis.setex(key, ttlSeconds, JSON.stringify(value));
+    } catch (error) {
+      console.error('Redis cache error (set):', error);
+    }
+  }
+  
+  /**
    * Get cached project statistics
    */
   async getProjectStats(projectId: number, days: number): Promise<any | null> {

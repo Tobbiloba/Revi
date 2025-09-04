@@ -12,7 +12,10 @@ import apiClient, {
   GetProjectResponse,
   ListSessionsParams,
   ListSessionsResponse,
-  UpdateErrorStatusRequest
+  UpdateErrorStatusRequest,
+  DashboardOverview,
+  BatchHealthCheckResponse,
+  ProjectHealthSummary
 } from '../revi-api';
 
 // Query keys for consistent caching
@@ -25,6 +28,8 @@ export const queryKeys = {
   health: () => ['health'] as const,
   projects: () => ['projects'] as const,
   project: (id: number) => ['project', id] as const,
+  dashboardOverview: (days: number, includeProjectHealth: boolean) => ['dashboardOverview', days, includeProjectHealth] as const,
+  batchHealthCheck: (projectIds: number[], days: number) => ['batchHealthCheck', projectIds, days] as const,
 };
 
 // Hook for fetching errors with pagination and filtering
@@ -211,6 +216,85 @@ export function useSessions(
 
 // Removed real-time session monitoring - use useSessions directly instead
 
+// PERFORMANCE OPTIMIZED: Aggregated dashboard hook
+// Replaces multiple API calls with a single optimized request
+export function useDashboardOverview(
+  days: number = 7,
+  includeProjectHealth: boolean = true,
+  options?: Partial<UseQueryOptions<DashboardOverview, Error>>
+) {
+  return useQuery({
+    queryKey: queryKeys.dashboardOverview(days, includeProjectHealth),
+    queryFn: () => apiClient.getDashboardOverview(days, includeProjectHealth),
+    staleTime: 2 * 60 * 1000, // 2 minutes - dashboard data changes frequently
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    ...options,
+  });
+}
+
+// PERFORMANCE OPTIMIZED: Batch project health check
+// Replaces individual useProjectHealth calls with a single batch request
+export function useBatchProjectHealth(
+  projectIds: number[],
+  days: number = 7,
+  options?: Partial<UseQueryOptions<BatchHealthCheckResponse, Error>>
+) {
+  return useQuery({
+    queryKey: queryKeys.batchHealthCheck(projectIds, days),
+    queryFn: () => apiClient.batchHealthCheck(projectIds, days),
+    enabled: projectIds.length > 0,
+    staleTime: 3 * 60 * 1000, // 3 minutes - health data is less dynamic
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    ...options,
+  });
+}
+
+// Type for the transformed dashboard overview data
+interface ProjectsOverviewData {
+  projects: ProjectHealthSummary[];
+  summary: {
+    totalProjects: number;
+    totalErrors: number;
+    totalActiveSessions: number;
+    totalUniqueUsers: number;
+    lastActivity?: Date;
+    avgErrorRate: number;
+  };
+  errorTrend: Array<{
+    date: string;
+    count: number;
+  }>;
+  topErrors: Array<{
+    message: string;
+    count: number;
+    affectedProjects: number;
+  }>;
+}
+
+// PERFORMANCE OPTIMIZED: Projects overview with aggregated data
+// This hook combines project list with health data in a single optimized request
+export function useProjectsOverviewOptimized(
+  days: number = 7,
+  options?: Partial<UseQueryOptions<DashboardOverview, Error, ProjectsOverviewData>>
+) {
+  return useQuery<DashboardOverview, Error, ProjectsOverviewData>({
+    queryKey: ['projectsOverviewOptimized', days],
+    queryFn: () => apiClient.getDashboardOverview(days, true), // Always include project health
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    select: (data): ProjectsOverviewData => ({
+      projects: data.projectsHealth || [],
+      summary: data.summary,
+      errorTrend: data.recentErrorTrend,
+      topErrors: data.topErrorMessages
+    }),
+    ...options,
+  });
+}
+
 // Utility hook for invalidating queries
 export function useReviQueryClient() {
   const queryClient = useQueryClient();
@@ -230,6 +314,8 @@ export function useReviQueryClient() {
         queryKey: sessionId ? queryKeys.sessionEvents(sessionId) : ['sessionEvents'] 
       }),
     invalidateProjects: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects() }),
+    invalidateDashboard: () => queryClient.invalidateQueries({ queryKey: ['dashboardOverview'] }),
+    invalidateBatchHealth: () => queryClient.invalidateQueries({ queryKey: ['batchHealthCheck'] }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }

@@ -146,6 +146,59 @@ export interface APIError {
   status?: number;
 }
 
+// Dashboard Overview Types
+export interface ProjectHealthSummary {
+  id: number;
+  name: string;
+  created_at: Date;
+  updated_at: Date;
+  totalErrors: number;
+  hasRecentActivity: boolean;
+  lastActivity?: Date;
+  errorRate: number;
+  activeSessions: number;
+  status: 'critical' | 'warning' | 'active' | 'healthy' | 'unknown';
+}
+
+export interface DashboardOverview {
+  success: true;
+  summary: {
+    totalProjects: number;
+    totalErrors: number;
+    totalActiveSessions: number;
+    totalUniqueUsers: number;
+    lastActivity?: Date;
+    avgErrorRate: number;
+  };
+  projectsHealth?: ProjectHealthSummary[];
+  recentErrorTrend: Array<{
+    date: string;
+    count: number;
+  }>;
+  topErrorMessages: Array<{
+    message: string;
+    count: number;
+    affectedProjects: number;
+  }>;
+}
+
+export interface BatchHealthCheckRequest {
+  projectIds: number[];
+  days?: number;
+}
+
+export interface BatchHealthCheckResponse {
+  success: true;
+  projects: Record<number, {
+    totalErrors: number;
+    hasRecentActivity: boolean;
+    lastActivity?: Date;
+    errorRate: number;
+    activeSessions: number;
+    status: 'critical' | 'warning' | 'active' | 'healthy' | 'unknown';
+  }>;
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -369,6 +422,53 @@ class ReviAPIClient {
         ...data,
       }),
     });
+  }
+
+  // Dashboard aggregation methods
+  async getDashboardOverview(days: number = 7, includeProjectHealth: boolean = true): Promise<DashboardOverview> {
+    const params = new URLSearchParams();
+    params.append('days', days.toString());
+    params.append('includeProjectHealth', includeProjectHealth.toString());
+    
+    const response = await this.makeRequest<DashboardOverview>(
+      `/api/dashboard/overview?${params.toString()}`
+    );
+    
+    // Convert date strings to Date objects
+    if (response.summary.lastActivity) {
+      response.summary.lastActivity = new Date(response.summary.lastActivity);
+    }
+    
+    if (response.projectsHealth) {
+      response.projectsHealth = response.projectsHealth.map(project => ({
+        ...project,
+        created_at: new Date(project.created_at),
+        updated_at: new Date(project.updated_at),
+        lastActivity: project.lastActivity ? new Date(project.lastActivity) : undefined
+      }));
+    }
+    
+    return response;
+  }
+
+  async batchHealthCheck(projectIds: number[], days: number = 7): Promise<BatchHealthCheckResponse> {
+    const response = await this.makeRequest<BatchHealthCheckResponse>('/api/projects/health/batch', {
+      method: 'POST',
+      body: JSON.stringify({
+        projectIds,
+        days
+      }),
+    });
+    
+    // Convert date strings to Date objects in the response
+    Object.keys(response.projects).forEach(projectId => {
+      const project = response.projects[parseInt(projectId)];
+      if (project.lastActivity) {
+        project.lastActivity = new Date(project.lastActivity);
+      }
+    });
+    
+    return response;
   }
 }
 

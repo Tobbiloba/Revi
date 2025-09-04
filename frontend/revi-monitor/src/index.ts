@@ -5,6 +5,15 @@ export { SessionManager } from './session';
 export { NetworkMonitor } from './network-monitor';
 export { DataManager } from './data-manager';
 
+// Resilience exports
+export { RetryManager } from './retry-manager';
+export { CircuitBreakerManager } from './circuit-breaker';
+export { ResilientStorage } from './resilient-storage';
+export { MultiRegionalHealthMonitor } from './health-monitor';
+export { IntelligentSyncManager } from './sync-manager';
+export { IdempotencyManager } from './idempotency-manager';
+export { ResilienceCoordinator } from './resilience-coordinator';
+
 // Type exports
 export type { 
   ReviConfig, 
