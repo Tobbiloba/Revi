@@ -1,6 +1,5 @@
 import { api, Header, APIError } from "encore.dev/api";
 import { db } from "./db";
-import { broadcastSessionEvent } from "../sessions/streaming";
 
 export interface SessionEventData {
   event_type: string;
@@ -113,12 +112,7 @@ export const captureSessionEvent = api<CaptureSessionEventParams, CaptureSession
             session_id: eventData.session_id
           });
           
-          // Broadcast new session event to streaming clients
-          await broadcastSessionEvent(
-            eventData.session_id, 
-            eventData.event_type, 
-            eventData.data
-          );
+          // Session event processing completed
         }
       } catch (error) {
         console.error(`[Revi Backend] Failed to insert session event:`, error, {

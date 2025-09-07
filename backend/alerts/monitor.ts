@@ -21,15 +21,6 @@ export interface AlertHistory {
 }
 
 /**
- * Background job to monitor and trigger alerts
- */
-export const alertMonitor = new CronJob("alert-monitor", {
-  title: "Alert Monitor",
-  every: "1m", // Check alerts every minute
-  endpoint: checkAllAlertsEndpoint,
-});
-
-/**
  * API endpoint for cron job to check all alerts
  */
 export const checkAllAlertsEndpoint = api(
@@ -38,6 +29,15 @@ export const checkAllAlertsEndpoint = api(
     await checkAllAlerts();
   }
 );
+
+/**
+ * Background job to monitor and trigger alerts
+ */
+export const alertMonitor = new CronJob("alert-monitor", {
+  title: "Alert Monitor",
+  every: "1m", // Check alerts every minute
+  endpoint: checkAllAlertsEndpoint,
+});
 
 /**
  * Check all active alert rules
@@ -144,7 +144,7 @@ async function triggerAlert(rule: AlertRule, evaluationResult: any): Promise<voi
       const message = formatAlertMessage(rule, evaluationResult);
       
       const notificationResult = await sendNotification({
-        channel_ids: channels.map(id => parseInt(id)),
+        channel_ids: channels.map((id: any) => parseInt(id)),
         title,
         message,
         severity: rule.severity,

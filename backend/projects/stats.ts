@@ -87,8 +87,15 @@ async function calculateProjectStats(projectId: number, days: number): Promise<P
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days);
     
-    // Get total error count for the period
+    // Get total error count for ALL TIME (not just the date range)
     const totalErrorsResult = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*) as count
+      FROM errors
+      WHERE project_id = ${projectId}
+    `;
+    
+    // Get error count for the specified period (for error rate calculation)
+    const periodErrorsResult = await db.queryRow<{ count: number }>`
       SELECT COUNT(*) as count
       FROM errors
       WHERE project_id = ${projectId}
@@ -97,9 +104,10 @@ async function calculateProjectStats(projectId: number, days: number): Promise<P
     `;
     
     const totalErrors = totalErrorsResult?.count || 0;
+    const periodErrors = periodErrorsResult?.count || 0;
     
-    // Calculate error rate (errors per day)
-    const errorRate = Math.round((totalErrors / days) * 100) / 100;
+    // Calculate error rate (errors per day based on the specified period)
+    const errorRate = Math.round((periodErrors / days) * 100) / 100;
     
     // Get unique active sessions count
     const activeSessionsResult = await db.queryRow<{ count: number }>`
@@ -514,5 +522,17 @@ export const getDatabaseStats = api<DatabaseStatsParams, DatabaseStatsResponse>(
     }
 
     return response;
+  }
+);
+
+// Clear cache endpoint for testing/debugging
+export const clearProjectCache = api(
+  { expose: true, method: "POST", path: "/api/cache/clear" },
+  async () => {
+    await cacheManager.clearAllCache();
+    return {
+      success: true,
+      message: "All cache entries cleared successfully"
+    };
   }
 );

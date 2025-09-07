@@ -36,11 +36,13 @@ export default function ProjectDashboardPage({ params }: ProjectDashboardPagePro
       <div className="w-full">
         <ProjectBreadcrumb />
         <div className="flex flex-col items-start justify-center gap-2 mb-6">
-          <h1 className="text-3xl font-light tracking-tight text-gray-800 dark:text-gray-200">
-            Project Dashboard
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-light tracking-tight text-gray-800 dark:text-gray-200">
+              Project Dashboard
+            </h1>
+          </div>
           <p className="text-gray-600 dark:text-gray-400 font-light">
-            Real-time monitoring of application errors, user sessions, and performance metrics.
+            Auto-refreshing monitoring of application errors, user sessions, and performance metrics.
           </p>
         </div>
         <div className="@container/main flex flex-1 flex-col gap-2">

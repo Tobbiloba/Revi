@@ -8,11 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IconChartDots, IconClock, IconMapPin, IconBrowser, IconDevices, IconDownload } from '@tabler/icons-react';
-import { RealTimeError } from '@/lib/websocket/error-stream-client';
+import { ErrorWithSession } from '@/lib/revi-api';
 import { cn } from '@/lib/utils';
 
 interface ErrorHeatMapsProps {
-  errors: RealTimeError[];
+  errors: ErrorWithSession[];
   className?: string;
   height?: number;
 }
@@ -21,14 +21,14 @@ interface HeatMapData {
   x: string;
   y: string;
   value: number;
-  errors: RealTimeError[];
+  errors: ErrorWithSession[];
 }
 
 interface TimeHeatMapData {
   hour: number;
   day: number;
   value: number;
-  errors: RealTimeError[];
+  errors: ErrorWithSession[];
 }
 
 interface LocationHeatMapData {
@@ -36,7 +36,7 @@ interface LocationHeatMapData {
   fullUrl: string;
   count: number;
   severity: string;
-  errors: RealTimeError[];
+  errors: ErrorWithSession[];
 }
 
 const severityColors = {
@@ -97,7 +97,7 @@ export const ErrorHeatMaps: React.FC<ErrorHeatMapsProps> = ({
   // Prepare time heat map data (hour vs day of week)
   const timeHeatMapData = useMemo(() => {
     const heatMapData: TimeHeatMapData[] = [];
-    const dataMap = new Map<string, { count: number; errors: RealTimeError[] }>();
+    const dataMap = new Map<string, { count: number; errors: ErrorWithSession[] }>();
 
     filteredErrors.forEach(error => {
       const date = new Date(error.timestamp);
@@ -133,7 +133,7 @@ export const ErrorHeatMaps: React.FC<ErrorHeatMapsProps> = ({
 
   // Prepare location heat map data
   const locationHeatMapData = useMemo(() => {
-    const locationMap = new Map<string, { count: number; errors: RealTimeError[]; severityCount: Record<string, number> }>();
+    const locationMap = new Map<string, { count: number; errors: ErrorWithSession[]; severityCount: Record<string, number> }>();
 
     filteredErrors.forEach(error => {
       const url = error.url || 'Unknown';
@@ -172,7 +172,7 @@ export const ErrorHeatMaps: React.FC<ErrorHeatMapsProps> = ({
 
   // Prepare browser/device heat map data
   const browserHeatMapData = useMemo(() => {
-    const browserMap = new Map<string, Map<string, { count: number; errors: RealTimeError[] }>>();
+    const browserMap = new Map<string, Map<string, { count: number; errors: ErrorWithSession[] }>>();
 
     filteredErrors.forEach(error => {
       const userAgent = error.user_agent || 'Unknown';

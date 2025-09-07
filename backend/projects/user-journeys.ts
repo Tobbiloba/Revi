@@ -40,7 +40,7 @@ export const getProjectUserJourneys = api<ProjectUserJourneyParams, ProjectUserJ
     const days = params.days || 1;
     
     // Map days parameter to time_range format expected by analytics
-    let timeRange: '1h' | '24h' | '7d' | '30d';
+    let timeRange: '24h' | '7d' | '30d';
     if (days <= 1) {
       timeRange = '24h';
     } else if (days <= 7) {
@@ -54,9 +54,6 @@ export const getProjectUserJourneys = api<ProjectUserJourneyParams, ProjectUserJ
     const startTime = new Date();
     
     switch (timeRange) {
-      case '1h':
-        startTime.setHours(endTime.getHours() - 1);
-        break;
       case '24h':
         startTime.setHours(endTime.getHours() - 24);
         break;

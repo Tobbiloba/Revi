@@ -1,7 +1,6 @@
 
 'use client';
 
-import { RealTimeErrorStream } from '@/app/dashboard/_components/advanced/real-time-error-stream';
 import { InteractiveErrorTimeline } from '@/app/dashboard/_components/advanced/interactive-error-timeline';
 import { ErrorHeatMaps } from '@/app/dashboard/_components/advanced/error-heat-maps';
 import { UserJourneyVisualization } from '@/app/dashboard/_components/advanced/user-journey-visualization';
@@ -13,20 +12,16 @@ import { Badge } from '@/components/ui/badge';
 import { IconFlask, IconBolt, IconActivity, IconEye, IconBrain } from '@tabler/icons-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useRealTimeErrors } from '@/lib/hooks/useRealTimeErrors';
+import { ErrorWithSession } from '@/lib/revi-api';
 
 export default function Dashboard() {
   const [selectedProjectId] = useState<number>(1);
 
-  // Get real-time errors for the interactive timeline
-  const { errors, isConnected } = useRealTimeErrors({
-    projectId: selectedProjectId,
-    maxErrors: 500,
-    filters: {},
-    enableNotifications: false
-  });
+  // Dashboard overview - uses standard API calls, no WebSocket needed
+  const errors: ErrorWithSession[] = []; // Static data for overview
+  const isConnected = false; // No WebSocket on main dashboard
 
-  const handleErrorClick = (error: { message: string }) => {
+  const handleErrorClick = (error: ErrorWithSession) => {
     toast.info(`Clicked error: ${error.message.substring(0, 50)}...`);
   };
 
@@ -214,14 +209,7 @@ export default function Dashboard() {
         className="col-span-full"
       />
 
-      {/* Real-time Error Stream */}
-      <RealTimeErrorStream
-        projectId={selectedProjectId}
-        enableSound={true}
-        enableFilters={true}
-        onErrorClick={handleErrorClick}
-        className="col-span-full"
-      />
+      {/* Real-time Error Stream - Replaced with auto-refresh dashboard on project pages */}
 
       {/* Implementation Status */}
       <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">

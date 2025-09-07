@@ -517,7 +517,8 @@ function calculateCorrelations(segments: any[]): Array<{
 
   Object.entries(segmentGroups).forEach(([name, segmentList]) => {
     // Find segment with highest error rate
-    const maxErrorSegment = segmentList.reduce((max, segment) => 
+    const segments = segmentList as any[];
+    const maxErrorSegment = segments.reduce((max: any, segment: any) => 
       segment.error_rate > max.error_rate ? segment : max
     );
 

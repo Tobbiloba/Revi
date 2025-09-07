@@ -205,15 +205,15 @@ export const exportProjectData = api<{
     const exportData: Record<string, any[]> = {};
 
     if (params.data_types.includes('errors')) {
-      exportData.errors = await exportErrors(params.project_id, startTime, endTime, params.include_pii);
+      exportData.errors = await exportErrors(params.project_id, startTime, endTime, params.include_pii ?? false);
     }
 
     if (params.data_types.includes('sessions')) {
-      exportData.sessions = await exportSessions(params.project_id, startTime, endTime, params.include_pii);
+      exportData.sessions = await exportSessions(params.project_id, startTime, endTime, params.include_pii ?? false);
     }
 
     if (params.data_types.includes('users')) {
-      exportData.users = await exportUsers(params.project_id, startTime, endTime, params.include_pii);
+      exportData.users = await exportUsers(params.project_id, startTime, endTime, params.include_pii ?? false);
     }
 
     if (params.data_types.includes('performance')) {

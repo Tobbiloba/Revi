@@ -9,12 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IconRoute, IconUsers, IconTarget, IconTrendingDown, IconDownload, IconRefresh } from '@tabler/icons-react';
-import { RealTimeError } from '@/lib/websocket/error-stream-client';
+import { ErrorWithSession } from '@/lib/revi-api';
 import { cn } from '@/lib/utils';
 import defaultApiClient from '@/lib/revi-api';
 
 interface UserJourneyVisualizationProps {
-  errors: RealTimeError[];
+  errors: ErrorWithSession[];
   className?: string;
   height?: number;
 }
@@ -48,7 +48,7 @@ interface UserFlow {
   userId?: string;
   path: string[];
   timestamps: Date[];
-  errors: RealTimeError[];
+  errors: ErrorWithSession[];
   duration: number;
   converted: boolean;
 }

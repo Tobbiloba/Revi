@@ -3,7 +3,6 @@ import { db } from "./db";
 import { processError } from "../intelligence/grouping";
 import { cacheManager } from "../cache/redis-cache";
 import { backgroundJobProcessor } from "../jobs/background-processor";
-import { broadcastSessionError } from "../sessions/streaming";
 
 export interface DeviceInfoData {
   browser_name: string;
@@ -111,6 +110,7 @@ export const captureError = api<CaptureErrorParams, CaptureErrorResponse>(
       const jobIds = jobResults.filter((id): id is string => id !== null);
       console.log(`[Bulk Upload] Queued ${jobIds.length} error grouping jobs`);
       
+
       // Return immediately for bulk uploads
       return {
         success: true,
@@ -136,20 +136,6 @@ export const captureError = api<CaptureErrorParams, CaptureErrorResponse>(
         console.error('Cache invalidation failed:', error)
       );
       
-      // Broadcast new errors to streaming clients
-      if (errorsToProcess.length <= 5) { // Only for synchronous processing
-        errorIds.forEach(async (errorId, index) => {
-          const errorData = errorsToProcess[index];
-          if (errorData?.session_id) {
-            await broadcastSessionError(errorData.session_id, {
-              id: errorId,
-              message: errorData.message || 'Unknown error',
-              stack_trace: errorData.stack_trace,
-              url: errorData.url
-            });
-          }
-        });
-      }
     }
   }
 );

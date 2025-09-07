@@ -119,12 +119,13 @@ async function sendEnhancedSlackNotification(request: EnhancedNotificationReques
     throw new Error('Slack configuration missing "webhook_url" or "channel" field');
   }
 
-  const severityEmoji = {
+  const severityEmojis: Record<string, string> = {
     critical: '🚨',
     high: '⚠️',
     medium: '⚡',
     low: 'ℹ️'
-  }[request.metadata?.severity || 'medium'] || '📢';
+  };
+  const severityEmoji = severityEmojis[request.metadata?.severity || 'medium'] || '📢';
 
   const slackMessage = {
     text: `${severityEmoji} ${request.subject}`,
@@ -294,8 +295,7 @@ async function sendEnhancedWebhookNotification(request: EnhancedNotificationRequ
       const response = await fetch(config.url, {
         method: config.method || 'POST',
         headers,
-        body: JSON.stringify(payload),
-        timeout: config.timeout || 15000
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -340,12 +340,13 @@ async function sendEnhancedSMSNotification(request: EnhancedNotificationRequest)
     throw new Error('SMS configuration missing "phone_number" field');
   }
 
-  const severityIcon = {
+  const severityIcons: Record<string, string> = {
     critical: '🚨',
     high: '⚠️',
     medium: '⚡',
     low: 'ℹ️'
-  }[request.metadata?.severity || 'medium'] || '📢';
+  };
+  const severityIcon = severityIcons[request.metadata?.severity || 'medium'] || '📢';
 
   const smsMessage = `${severityIcon} ${request.subject}\n\n${request.message}${
     request.metadata?.project_id ? `\n\nProject: ${request.metadata.project_id}` : ''
@@ -388,7 +389,7 @@ async function sendEnhancedDiscordNotification(request: EnhancedNotificationRequ
       text: 'Revi Alert System • Enhanced Notifications',
       icon_url: config.footer_icon
     },
-    fields: [],
+    fields: [] as Array<{name: string; value: string; inline: boolean}>,
     thumbnail: config.thumbnail_url ? { url: config.thumbnail_url } : undefined
   };
 
@@ -472,12 +473,13 @@ function getEnhancedDiscordColor(severity?: string): number {
  */
 function formatEnhancedEmailMessage(message: string, metadata?: Record<string, any>): string {
   const severity = metadata?.severity || 'medium';
-  const severityColor = {
+  const severityColors: Record<string, string> = {
     critical: '#dc3545',
     high: '#fd7e14', 
     medium: '#ffc107',
     low: '#28a745'
-  }[severity] || '#6c757d';
+  };
+  const severityColor = severityColors[severity] || '#6c757d';
 
   const htmlMessage = message.replace(/\n/g, '<br>');
   

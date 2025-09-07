@@ -7,20 +7,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { IconZoomIn, IconZoomOut, IconRefresh, IconDownload, IconSettings } from '@tabler/icons-react';
-import { RealTimeError } from '@/lib/websocket/error-stream-client';
+import { ErrorWithSession } from '@/lib/revi-api';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-interface TimelineError extends RealTimeError {
+interface TimelineError extends ErrorWithSession {
   x?: number;
   y?: number;
 }
 
 interface InteractiveErrorTimelineProps {
-  errors: RealTimeError[];
+  errors: ErrorWithSession[];
   className?: string;
   height?: number;
-  onErrorClick?: (error: RealTimeError) => void;
+  onErrorClick?: (error: ErrorWithSession) => void;
   enableZoom?: boolean;
   enableBrushing?: boolean;
 }

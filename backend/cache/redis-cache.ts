@@ -124,14 +124,19 @@ class StatsCacheManager {
         `session_analytics:${projectId}:*`
       ];
       
+      let totalKeysCleared = 0;
       for (const pattern of patterns) {
         const keys = await this.redis.keys(pattern);
+        console.log(`[Cache INVALIDATE] Found ${keys.length} keys matching pattern: ${pattern}`);
+        
         for (const key of keys) {
           await this.redis.del(key);
+          totalKeysCleared++;
+          console.log(`[Cache INVALIDATE] Cleared key: ${key}`);
         }
       }
       
-      console.log(`[Cache INVALIDATE] Cleared ${patterns.length} patterns for project ${projectId}`);
+      console.log(`[Cache INVALIDATE] Cleared ${totalKeysCleared} total keys for project ${projectId}`);
     } catch (error) {
       console.error('Redis cache error (invalidate):', error);
     }
@@ -189,9 +194,8 @@ class StatsCacheManager {
    * Generate cache key for project stats
    */
   private getStatsKey(projectId: number, days: number): string {
-    // Round to nearest hour for better cache hit rate
-    const hourlyTimestamp = Math.floor(Date.now() / (1000 * 60 * 60));
-    return `project_stats:${projectId}:${days}d:${hourlyTimestamp}`;
+    // Use simple key without timestamp for proper invalidation
+    return `project_stats:${projectId}:${days}d`;
   }
   
   /**
@@ -204,6 +208,24 @@ class StatsCacheManager {
     return 3600;                  // 1 hour for historical data
   }
   
+  /**
+   * Force clear all cache entries (for testing/debugging)
+   */
+  async clearAllCache(): Promise<void> {
+    try {
+      const allKeys = await this.redis.keys('*');
+      console.log(`[Cache CLEAR ALL] Found ${allKeys.length} total cache keys`);
+      
+      for (const key of allKeys) {
+        await this.redis.del(key);
+      }
+      
+      console.log(`[Cache CLEAR ALL] Cleared all ${allKeys.length} cache entries`);
+    } catch (error) {
+      console.error('Redis cache error (clear all):', error);
+    }
+  }
+
   /**
    * Health check for cache system
    */

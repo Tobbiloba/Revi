@@ -15,6 +15,7 @@ export interface ErrorWithSession {
   assigned_to?: string;
   resolved_at?: Date;
   resolution_notes?: string;
+  severity?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 export interface ListErrorsParams {
@@ -24,6 +25,7 @@ export interface ListErrorsParams {
   start_date?: string;
   end_date?: string;
   status?: 'new' | 'investigating' | 'resolved' | 'ignored';
+  _refresh?: number; // Used for forcing refetch
 }
 
 export interface UpdateErrorStatusRequest {
