@@ -6,7 +6,7 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 
 export default function FeaturesSection() {
     return (
-        <section className="px-4 py-16 md:py-32">
+        <section id="features" className="px-4 py-16 md:py-32">
             <div className="mx-auto grid max-w-7xl border-[.1px] border-white/10 rounded-xl md:grid-cols-2">
                 <div className='bg-gradient-to-br from-white/10 via-transparent to-white/30'>
                     <div className="p-6 sm:p-12">

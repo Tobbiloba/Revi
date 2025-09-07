@@ -12,63 +12,42 @@ export interface SearchButtonProps
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
-// Size mapping - currently unused but kept for future extensibility
-// const sizeMapping = {
-//   xs: {
-//     button: 'py-1 px-2 text-xs',
-//     icon: 'px-1',
-//     iconSize: 11,
-//   },
-//   sm: {
-//     button: 'py-1.5 px-3 text-sm',
-//     icon: 'px-1',
-//     iconSize: 11,
-//   },
-//   md: {
-//     button: 'py-2 px-4 text-base',
-//     icon: 'px-1',
-//     iconSize: 13,
-//   },
-//   lg: {
-//     button: 'py-3 px-6 text-lg',
-//     icon: 'px-2',
-//     iconSize: 14,
-//   },
-//   xl: {
-//     button: 'py-4 px-8 text-xl',
-//     icon: 'px-2',
-//     iconSize: 15,
-//   },
-// };
-
 const SearchButton = React.forwardRef<HTMLButtonElement, SearchButtonProps>(
   (
     {
       placeholder = 'Search Documentation..',
-      size = 'sm',
       className,
       ...props
     },
     ref
   ) => {
-    // const { icon, iconSize } = sizeMapping[size]; // Unused variables
+    // Filter out incompatible props
+    const { size: _, ...buttonProps } = props;
+    
     return (
       <Button
         ref={ref}
         variant={'ghost'}
         className={cn(
-          'flex flex-1 justify-start space-x-3 h-10 px-4',
+          'flex items-center justify-between h-10 px-3 min-w-40 w-80',
           'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700',
           'hover:bg-gray-100 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600',
           'focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
           'transition-all duration-200',
           className
         )}
-        {...props}
+        {...buttonProps}
       >
-        <Search size={16} className="text-gray-500 dark:text-gray-400" />
-        <span className="text-gray-600 dark:text-gray-300 flex-1 text-left">{placeholder}</span>
-        <div className="flex items-center gap-1">
+        {/* Left section: Search icon and text */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Search size={16} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+          <span className="text-gray-600 dark:text-gray-300 text-left truncate">
+            {placeholder}
+          </span>
+        </div>
+        
+        {/* Right section: Keyboard shortcut */}
+        <div className="flex items-center ml-2 flex-shrink-0">
           <span
             className={clsx(
               'inline-flex items-center justify-center rounded px-1.5 py-0.5',

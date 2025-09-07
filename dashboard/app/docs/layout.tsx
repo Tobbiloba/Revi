@@ -22,7 +22,6 @@ import {
   NestedLink,
 } from './_components/sidebar';
 import { Github } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 import Header from './_components/header';
 import { Button } from '@/components/ui/button';
@@ -65,7 +64,6 @@ export default function DocsLayout({
                 isCollapsable={section.pages && section.pages.length > 0}
                 key={section.title}
                 label={section.title}
-                href={'#'}
                 icon={section.icon}
                 defaultOpen={section.defaultOpen}
               >

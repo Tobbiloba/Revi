@@ -84,24 +84,12 @@ const components = {
       {...children}
     />
   ),
-  h2: ({ className, ...props }: React.HTMLAttributes<HTMLElement>) => {
-    return (
-      <Link
-        href={`#${props.id}`}
-        className={'cursor-pointer group relative items-center w-fit'}
-      >
-        <h2
-          className={`font-edu flex text-xl md:text-2xl font-medium mt-10 mb-4 gap-2 text-white hover:text-blue-400 transition-colors ${className}`}
-          {...props}
-        >
-          {props.children}
-          <span className="text-xl text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-            #
-          </span>
-        </h2>
-      </Link>
-    );
-  },
+  h2: ({ className, ...props }: React.HTMLAttributes<HTMLElement>) => (
+    <h2
+      className={`font-edu text-xl md:text-2xl font-medium mt-10 mb-4 text-white hover:text-blue-400 transition-colors ${className}`}
+      {...props}
+    />
+  ),
   h3: ({ className, ...children }: React.HTMLAttributes<HTMLElement>) => (
     <h3
       className={`font-edu text-lg md:text-xl font-medium mt-8 mb-3 text-gray-200 ${className}`}

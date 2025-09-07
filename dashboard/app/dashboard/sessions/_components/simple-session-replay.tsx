@@ -44,7 +44,7 @@ export function SimpleSessionReplay({ sessionId }: SimpleSessionReplayProps) {
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('console');
   const [searchTerm, setSearchTerm] = useState('');
-  const [eventFilters, setEventFilters] = useState({
+  const [eventFilters] = useState({
     errors: true,
     network: true,
     userActions: true,
@@ -259,7 +259,6 @@ export function SimpleSessionReplay({ sessionId }: SimpleSessionReplayProps) {
     });
   }, [events, searchTerm, eventFilters]);
 
-  const sessionStartTime = events.length > 0 ? events[0].timestamp : Date.now();
 
   // AI-Powered Session Analysis (like LogRocket Galileo)
   const sessionAnalysis = useMemo(() => {

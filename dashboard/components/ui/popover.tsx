@@ -88,7 +88,7 @@ export const Popover = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, closeOnOutsideClick, onClose]);
+  }, [isOpen, closeOnOutsideClick, onClose, close]);
 
   // Handle ESC key
   useEffect(() => {
@@ -104,7 +104,7 @@ export const Popover = ({
     return () => {
       document.removeEventListener('keydown', handleEscKey);
     };
-  }, [isOpen, closeOnEsc, onClose]);
+  }, [isOpen, closeOnEsc, onClose, close]);
 
   return (
     <PopoverContext.Provider
@@ -410,7 +410,7 @@ export const PopoverContent = ({
       updatePosition();
     }
     return undefined;
-  }, [isOpen]);
+  }, [isOpen, triggerRef, updatePosition]);
 
   // Update position on scroll and resize
   useEffect(() => {
@@ -428,7 +428,7 @@ export const PopoverContent = ({
       window.removeEventListener('resize', handlePositionChange);
       window.removeEventListener('scroll', handlePositionChange, true);
     };
-  }, [isOpen, sideOffset, position, isPositioned]);
+  }, [isOpen, sideOffset, position, isPositioned, updatePosition]);
 
   // Update position when content changes
   useEffect(() => {
@@ -439,7 +439,7 @@ export const PopoverContent = ({
       observer.observe(contentRef.current, { childList: true, subtree: true });
     }
     return () => observer.disconnect();
-  }, [isOpen, isPositioned]);
+  }, [isOpen, isPositioned, updatePosition]);
 
   if (!isOpen) {
     return null;

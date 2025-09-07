@@ -535,7 +535,7 @@ export function useStreamingSession(config: StreamingConfig) {
       unsubscribe();
       apiRef.current?.disconnect();
     };
-  }, [config.sessionId, config.projectId, config.apiKey]);
+  }, [config]);
 
   return {
     streamingData,

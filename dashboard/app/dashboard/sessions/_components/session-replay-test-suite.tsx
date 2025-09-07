@@ -584,7 +584,7 @@ export function SessionReplayTestSuite({
     setCurrentTest(null);
     onTestComplete?.(results);
   }, [runDOMTests, runPerformanceTests, runCSSTests, runErrorCorrelationTests, 
-      runStreamingTests, runMobileTests, runIntegrationTests, onTestComplete]);
+      runStreamingTests, runMobileTests, runIntegrationTests, onTestComplete, testSuites]);
 
   /**
    * Stop running tests

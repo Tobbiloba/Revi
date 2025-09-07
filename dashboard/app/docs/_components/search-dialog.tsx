@@ -108,7 +108,7 @@ const SearchDialog = forwardRef<SearchDialogHandle, SearchDialogProps>(
 
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger className='hidden sm:block'>
+        <DialogTrigger asChild className='hidden sm:block'>
           <SearchButton
             size="sm"
             placeholder="Search documentation.."

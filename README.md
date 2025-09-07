@@ -919,7 +919,7 @@ Revi is released under the **MIT License**. See [LICENSE](LICENSE) for details.
 ```
 MIT License
 
-Copyright (c) 2024 Revi Team
+Copyright (c) 2025 Revi Team
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

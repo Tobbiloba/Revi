@@ -3,6 +3,7 @@ import Hero from '@/app/(home)/_components/hero'
 import FooterSection from '@/components/footer'
 import ContentSection from '@/components/content'
 
+
 const Page = () => {
   return (
     <div>
