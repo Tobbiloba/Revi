@@ -1,0 +1,231 @@
+---
+title: Quick Start Guide
+description: Get up and running with Revi error monitoring in under 5 minutes. Install the SDK, configure your project, and start capturing errors immediately.
+---
+
+## Step 1: Install the Revi SDK
+
+Install the Revi monitoring SDK in your project:
+
+```bash
+npm install revi-monitor
+```
+
+Or with yarn:
+```bash
+yarn add revi-monitor
+```
+
+## Step 2: Initialize Revi in Your Application
+
+Create a Revi configuration file and initialize the monitor:
+
+```javascript
+// revi-config.js
+import { Monitor } from 'revi-monitor';
+
+export const monitor = new Monitor({
+  // Your project's API key from the Revi dashboard
+  apiKey: 'revi_your_api_key_here',
+  
+  // Your Revi backend URL
+  apiUrl: 'https://your-revi-backend.com',
+  
+  // Environment (development, staging, production)
+  environment: 'production',
+  
+  // Enable debug logging in development
+  debug: process.env.NODE_ENV === 'development',
+  
+  // Sampling rates (1.0 = 100%, 0.5 = 50%, etc.)
+  sampleRate: 1.0,
+  sessionSampleRate: 0.1, // Record 10% of sessions
+  
+  // Privacy settings
+  privacy: {
+    maskInputs: true,        // Mask form inputs by default
+    maskPasswords: true,     // Always mask password fields
+    maskCreditCards: true,   // Mask credit card numbers
+  },
+  
+  // Performance monitoring
+  performance: {
+    captureWebVitals: true,
+    captureResourceTiming: false,
+    captureNavigationTiming: true
+  },
+  
+  // Session replay settings
+  replay: {
+    enabled: true,
+    maskAllInputs: false,
+    maskAllText: false
+  }
+});
+```
+
+## Step 3: Integrate with Your Framework
+
+### React Application
+
+```jsx
+// App.jsx
+import React from 'react';
+import { monitor } from './revi-config';
+
+function App() {
+  React.useEffect(() => {
+    // Initialize Revi monitoring
+    monitor.start();
+    
+    // Expose to window for debugging (optional)
+    if (process.env.NODE_ENV === 'development') {
+      window.Revi = monitor;
+    }
+  }, []);
+
+  return (
+    <div className="App">
+      <h1>My Application</h1>
+      {/* Your app content */}
+    </div>
+  );
+}
+
+export default App;
+```
+
+### Vue.js Application
+
+```javascript
+// main.js
+import { createApp } from 'vue';
+import App from './App.vue';
+import { monitor } from './revi-config';
+
+const app = createApp(App);
+
+// Start Revi monitoring
+monitor.start();
+
+app.mount('#app');
+```
+
+### Vanilla JavaScript
+
+```javascript
+// main.js
+import { monitor } from './revi-config';
+
+// Start monitoring when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+  monitor.start();
+});
+```
+
+<Note>
+  Replace `'revi_your_api_key_here'` with your actual API key from the Revi dashboard, and update the `apiUrl` to point to your Revi backend instance.
+</Note>
+
+## Step 4: Create Your First Project
+
+1. **Sign up** for Revi or login to your dashboard
+2. **Create a new project** and copy your API key
+3. **Update your configuration** with the API key and backend URL
+4. **Deploy your application** with Revi integrated
+
+## Step 5: Verify Everything is Working
+
+After deploying your application:
+
+1. **Trigger a test error** (you can throw a manual error for testing)
+2. **Check the Revi dashboard** - you should see the error appear within seconds
+3. **View the session replay** to see the user actions leading to the error
+
+```javascript
+// Test error (remove after testing!)
+setTimeout(() => {
+  throw new Error('Test error for Revi integration');
+}, 5000);
+```
+
+## Advanced Configuration
+
+### Custom Error Tracking
+
+```javascript
+// Manually report errors with additional context
+monitor.captureException(new Error('Custom error'), {
+  tags: {
+    feature: 'checkout',
+    version: '1.2.3'
+  },
+  user: {
+    id: 'user123',
+    email: 'user@example.com'
+  },
+  extra: {
+    customData: 'important context'
+  }
+});
+```
+
+### User Identification
+
+```javascript
+// Identify users for better error tracking
+monitor.setUser({
+  id: 'user123',
+  email: 'user@example.com',
+  name: 'John Doe'
+});
+```
+
+### Custom Tags and Context
+
+```javascript
+// Add custom tags for filtering
+monitor.setTags({
+  feature: 'payment',
+  version: '1.2.3',
+  experiment: 'new-checkout'
+});
+
+// Set additional context
+monitor.setContext('payment', {
+  amount: 99.99,
+  currency: 'USD',
+  method: 'stripe'
+});
+```
+
+## Next Steps
+
+🎉 **Congratulations!** You've successfully integrated Revi into your application. Here's what to explore next:
+
+- **[Dashboard Overview](/docs/dashboard)** - Learn to navigate the Revi dashboard
+- **[Error Management](/docs/errors)** - Master error tracking and resolution
+- **[Session Replay](/docs/replay)** - Deep dive into session replay features
+- **[Performance Monitoring](/docs/performance)** - Track Core Web Vitals and performance
+- **[Integrations](/docs/integrations)** - Connect with Slack, Discord, and more
+
+## Troubleshooting
+
+### Common Issues
+
+**SDK not loading:**
+- Check that your API key is correct
+- Verify the backend URL is accessible
+- Ensure your firewall allows connections to the Revi backend
+
+**No errors appearing in dashboard:**
+- Confirm the SDK is initialized before your application code
+- Check browser console for Revi SDK errors
+- Verify your sampling rate isn't too low (try 1.0 for testing)
+
+**Session replays not working:**
+- Ensure `replay.enabled` is set to `true`
+- Check that `sessionSampleRate` is higher than 0
+- Verify your privacy settings aren't blocking necessary data
+
+Need more help? Check out our [troubleshooting guide](/docs/troubleshooting) or [contact support](/support).

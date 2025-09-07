@@ -264,7 +264,7 @@ export function SessionReplayEngine({
         // Use performance worker for heavy processing if available
         if (worker && snapshot.data.nodes.length > 50) {
           try {
-            const optimizedData = await worker.reconstructSession(
+            await worker.reconstructSession(
               {
                 snapshots: [snapshot as unknown as Record<string, unknown>],
                 interactions: interactions as unknown as Record<string, unknown>[],
@@ -378,7 +378,7 @@ export function SessionReplayEngine({
       console.error('Failed to reconstruct DOM:', error);
       setProcessingProgress(null);
     }
-  }, [isReady, interactions, viewport]);
+  }, [isReady, interactions, viewport, applyComputedStyles]);
 
   // Apply interactions (cursor, clicks, highlights)
   const applyInteractions = useCallback((interactions: InteractionEvent[]) => {
@@ -465,7 +465,7 @@ export function SessionReplayEngine({
     });
 
     setActiveInteraction(interactions[0] || null);
-  }, [isReady, nodeMap]);
+  }, [isReady, nodeMap, createEngine]);
 
   // Update replay based on current time
   useEffect(() => {

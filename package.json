@@ -1,10 +1,40 @@
 {
-  "name": "leap-app",
+  "name": "revi",
   "version": "1.0.0",
+  "description": "Open-source error monitoring and session replay platform for modern web applications",
   "type": "module",
   "packageManager": "bun",
   "workspaces": [
     "backend",
-    "frontend"
-  ]
+    "dashboard",
+    "sdk"
+  ],
+  "keywords": [
+    "error-monitoring",
+    "session-replay",
+    "debugging",
+    "performance",
+    "analytics",
+    "open-source",
+    "web-development",
+    "javascript",
+    "typescript",
+    "react",
+    "vue",
+    "angular"
+  ],
+  "author": "Revi Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tobbiloba/Revi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Tobbiloba/Revi/issues"
+  },
+  "homepage": "https://revi-five.vercel.app",
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  }
 }

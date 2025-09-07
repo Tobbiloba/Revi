@@ -1,0 +1,943 @@
+---
+title: 'Vanilla JavaScript Integration'
+description: 'Complete guide to integrating Revi error monitoring and session replay in your vanilla JavaScript application with ES6 modules and CDN support.'
+date: 2025-09-07
+---
+
+# Vanilla JavaScript Integration
+
+Integrate Revi seamlessly into your vanilla JavaScript application for comprehensive error monitoring and session replay. This guide covers modern ES6 modules, legacy JavaScript, and CDN integration.
+
+## Quick Setup Options
+
+### Option 1: NPM Package (Recommended)
+
+#### 1. Install Revi SDK
+
+```bash
+npm install revi-monitor
+```
+
+#### 2. ES6 Module Usage
+
+```javascript
+// main.js
+import { Monitor } from 'revi-monitor';
+
+// Initialize Revi
+const revi = new Monitor({
+  apiKey: 'revi_your_api_key_here',
+  apiUrl: 'https://your-revi-backend.com',
+  environment: 'production', // or 'development'
+  debug: false, // set to true for development
+  sampleRate: 1.0,
+  sessionSampleRate: 0.1, // 10% of sessions in production
+  privacy: {
+    maskInputs: true,
+    maskPasswords: true,
+    maskCreditCards: true,
+  },
+  performance: {
+    captureWebVitals: true,
+    captureNavigationTiming: true,
+  },
+  replay: {
+    enabled: true,
+    maskAllInputs: false,
+    maskAllText: false,
+  },
+});
+
+// Start monitoring
+revi.start();
+
+// Make Revi globally available
+window.Revi = revi;
+
+// Export for use in other modules
+export { revi };
+```
+
+#### 3. HTML Setup
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My App with Revi</title>
+</head>
+<body>
+    <div id="app">
+        <!-- Your app content -->
+    </div>
+    
+    <!-- Import your main JavaScript file -->
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
+```
+
+### Option 2: CDN Integration
+
+#### 1. Include Revi from CDN
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My App with Revi</title>
+</head>
+<body>
+    <div id="app">
+        <!-- Your app content -->
+    </div>
+
+    <!-- Load Revi from CDN -->
+    <script src="https://unpkg.com/revi-monitor@latest/dist/revi.umd.js"></script>
+    <script>
+        // Initialize Revi
+        const revi = new ReviMonitor.Monitor({
+            apiKey: 'revi_your_api_key_here',
+            apiUrl: 'https://your-revi-backend.com',
+            environment: 'production',
+            debug: false,
+            sampleRate: 1.0,
+            sessionSampleRate: 0.1,
+            privacy: {
+                maskInputs: true,
+                maskPasswords: true,
+                maskCreditCards: true,
+            },
+            performance: {
+                captureWebVitals: true,
+                captureNavigationTiming: true,
+            },
+            replay: {
+                enabled: true,
+                maskAllInputs: false,
+                maskAllText: false,
+            },
+        });
+
+        // Start monitoring
+        revi.start();
+
+        // Make globally available
+        window.Revi = revi;
+    </script>
+    
+    <!-- Your application scripts -->
+    <script src="./app.js"></script>
+</body>
+</html>
+```
+
+## Core Integration Patterns
+
+### 1. Global Error Handling
+
+```javascript
+// error-handler.js
+export class ErrorHandler {
+  constructor(revi) {
+    this.revi = revi;
+    this.setupGlobalHandlers();
+  }
+
+  setupGlobalHandlers() {
+    // Capture unhandled JavaScript errors
+    window.addEventListener('error', (event) => {
+      this.revi.captureException(event.error || new Error(event.message), {
+        tags: {
+          source: 'window-error',
+        },
+        extra: {
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          message: event.message,
+        },
+      });
+    });
+
+    // Capture unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      this.revi.captureException(
+        event.reason instanceof Error ? event.reason : new Error(event.reason),
+        {
+          tags: {
+            source: 'unhandled-promise',
+          },
+          extra: {
+            reason: event.reason,
+          },
+        }
+      );
+    });
+
+    // Capture network errors
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      try {
+        const response = await originalFetch(...args);
+        
+        // Log successful requests
+        this.revi.addBreadcrumb(`Fetch ${args[0]}`, {
+          category: 'http',
+          method: args[1]?.method || 'GET',
+          status: response.status,
+        });
+
+        return response;
+      } catch (error) {
+        // Log failed requests
+        this.revi.captureException(error, {
+          tags: {
+            source: 'fetch-error',
+          },
+          extra: {
+            url: args[0],
+            options: args[1],
+          },
+        });
+        throw error;
+      }
+    };
+  }
+
+  // Manual error capture
+  captureError(error, context = {}) {
+    this.revi.captureException(error, {
+      tags: { source: 'manual' },
+      extra: context,
+    });
+  }
+
+  // Async error wrapper
+  async captureAsyncError(asyncFn, context = {}) {
+    try {
+      return await asyncFn();
+    } catch (error) {
+      this.captureError(error, {
+        ...context,
+        type: 'async-error',
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
+  }
+}
+```
+
+### 2. User Interaction Tracking
+
+```javascript
+// interaction-tracker.js
+export class InteractionTracker {
+  constructor(revi) {
+    this.revi = revi;
+    this.setupTracking();
+  }
+
+  setupTracking() {
+    // Track button clicks
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      
+      if (target.tagName === 'BUTTON' || target.type === 'button') {
+        this.revi.addBreadcrumb(`Button clicked: ${this.getElementIdentifier(target)}`, {
+          category: 'user-interaction',
+          element: 'button',
+          text: target.textContent?.trim().substring(0, 50),
+        });
+      }
+      
+      // Track link clicks
+      if (target.tagName === 'A') {
+        this.revi.addBreadcrumb(`Link clicked: ${target.href}`, {
+          category: 'user-interaction',
+          element: 'link',
+          href: target.href,
+        });
+      }
+    });
+
+    // Track form submissions
+    document.addEventListener('submit', (event) => {
+      const form = event.target;
+      const formData = new FormData(form);
+      
+      this.revi.addBreadcrumb(`Form submitted: ${this.getElementIdentifier(form)}`, {
+        category: 'user-interaction',
+        element: 'form',
+        action: form.action,
+        method: form.method,
+        fieldCount: formData.entries().length,
+      });
+    });
+
+    // Track input focus
+    document.addEventListener('focusin', (event) => {
+      const target = event.target;
+      
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        this.revi.addBreadcrumb(`Input focused: ${this.getElementIdentifier(target)}`, {
+          category: 'user-interaction',
+          element: target.tagName.toLowerCase(),
+          type: target.type,
+        });
+      }
+    });
+
+    // Track page visibility
+    document.addEventListener('visibilitychange', () => {
+      this.revi.addBreadcrumb(`Page visibility: ${document.hidden ? 'hidden' : 'visible'}`, {
+        category: 'navigation',
+        hidden: document.hidden,
+      });
+    });
+  }
+
+  getElementIdentifier(element) {
+    if (element.id) return `#${element.id}`;
+    if (element.className) return `.${element.className.split(' ')[0]}`;
+    return element.tagName.toLowerCase();
+  }
+}
+```
+
+### 3. SPA Router Integration
+
+```javascript
+// router.js
+export class SimpleRouter {
+  constructor(revi) {
+    this.revi = revi;
+    this.routes = new Map();
+    this.currentRoute = null;
+    this.setupRouting();
+  }
+
+  setupRouting() {
+    // Handle browser navigation
+    window.addEventListener('popstate', (event) => {
+      this.handleRouteChange();
+    });
+
+    // Override pushState and replaceState
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    history.pushState = (...args) => {
+      originalPushState.apply(history, args);
+      this.handleRouteChange();
+    };
+
+    history.replaceState = (...args) => {
+      originalReplaceState.apply(history, args);
+      this.handleRouteChange();
+    };
+
+    // Initial route
+    this.handleRouteChange();
+  }
+
+  handleRouteChange() {
+    const path = window.location.pathname;
+    const previousRoute = this.currentRoute;
+    this.currentRoute = path;
+
+    // Track navigation
+    this.revi.addBreadcrumb(`Navigation: ${previousRoute || 'initial'} → ${path}`, {
+      category: 'navigation',
+      from: previousRoute,
+      to: path,
+      search: window.location.search,
+    });
+
+    // Set route context
+    this.revi.setContext('route', {
+      path,
+      search: window.location.search,
+      hash: window.location.hash,
+    });
+  }
+
+  navigate(path) {
+    history.pushState({}, '', path);
+    this.handleRouteChange();
+  }
+
+  addRoute(path, handler) {
+    this.routes.set(path, handler);
+  }
+}
+```
+
+## Complete Example Application
+
+### HTML Structure
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla JS App with Revi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        }
+        
+        .btn-red { background-color: #ef4444; }
+        .btn-orange { background-color: #f97316; }
+        .btn-blue { background-color: #3b82f6; }
+        .btn-green { background-color: #10b981; }
+        
+        .form-group {
+            margin: 10px 0;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .status {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status.success { color: #10b981; }
+        .status.error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>Vanilla JS App with Revi</h1>
+    
+    <!-- Navigation -->
+    <nav>
+        <button onclick="app.router.navigate('/')">Home</button>
+        <button onclick="app.router.navigate('/about')">About</button>
+        <button onclick="app.router.navigate('/contact')">Contact</button>
+    </nav>
+
+    <!-- Main content -->
+    <div id="app">
+        <div class="test-section">
+            <h2>Test Error Monitoring</h2>
+            <button class="btn btn-red" onclick="app.triggerSyncError()">
+                Sync Error
+            </button>
+            <button class="btn btn-orange" onclick="app.triggerAsyncError()">
+                Async Error
+            </button>
+            <button class="btn btn-blue" onclick="app.trackUserAction()">
+                Track Action
+            </button>
+            <div id="error-status" class="status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Contact Form</h2>
+            <form id="contact-form">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="message">Message:</label>
+                    <textarea id="message" name="message" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-green">Submit</button>
+            </form>
+            <div id="form-status" class="status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>API Test</h2>
+            <button class="btn btn-blue" onclick="app.testApiCall()">
+                Test API Call
+            </button>
+            <button class="btn btn-red" onclick="app.testFailedApiCall()">
+                Test Failed API Call
+            </button>
+            <div id="api-status" class="status"></div>
+        </div>
+    </div>
+
+    <!-- Include Revi and app scripts -->
+    <script type="module" src="./app.js"></script>
+</body>
+</html>
+```
+
+### Main Application
+
+```javascript
+// app.js
+import { Monitor } from 'revi-monitor';
+import { ErrorHandler } from './error-handler.js';
+import { InteractionTracker } from './interaction-tracker.js';
+import { SimpleRouter } from './router.js';
+
+class App {
+  constructor() {
+    this.initializeRevi();
+    this.setupComponents();
+    this.setupEventListeners();
+  }
+
+  initializeRevi() {
+    // Initialize Revi monitor
+    this.revi = new Monitor({
+      apiKey: 'revi_your_api_key_here', // Replace with your API key
+      apiUrl: 'https://your-revi-backend.com', // Replace with your backend URL
+      environment: 'development',
+      debug: true,
+      sampleRate: 1.0,
+      sessionSampleRate: 1.0,
+      privacy: {
+        maskInputs: true,
+        maskPasswords: true,
+        maskCreditCards: true,
+      },
+      performance: {
+        captureWebVitals: true,
+        captureNavigationTiming: true,
+      },
+      replay: {
+        enabled: true,
+        maskAllInputs: false,
+        maskAllText: false,
+      },
+    });
+
+    // Start monitoring
+    this.revi.start();
+
+    // Set up components
+    this.errorHandler = new ErrorHandler(this.revi);
+    this.interactionTracker = new InteractionTracker(this.revi);
+    this.router = new SimpleRouter(this.revi);
+
+    // Make available globally for debugging
+    window.Revi = this.revi;
+    window.App = this;
+
+    console.log('Revi initialized successfully');
+  }
+
+  setupComponents() {
+    // Set user context (example)
+    this.revi.setUser({
+      id: 'user123',
+      email: 'user@example.com',
+      name: 'Test User',
+    });
+
+    // Add initial breadcrumb
+    this.revi.addBreadcrumb('Application initialized');
+  }
+
+  setupEventListeners() {
+    // Contact form handling
+    const contactForm = document.getElementById('contact-form');
+    if (contactForm) {
+      contactForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.handleContactForm(event.target);
+      });
+    }
+
+    // Track page load
+    this.revi.addBreadcrumb('Page loaded', {
+      category: 'navigation',
+      url: window.location.href,
+    });
+  }
+
+  // Test functions for error monitoring
+  triggerSyncError() {
+    try {
+      throw new Error('Test synchronous error from vanilla JS');
+    } catch (error) {
+      this.errorHandler.captureError(error, {
+        component: 'App',
+        method: 'triggerSyncError',
+      });
+      
+      this.updateStatus('error-status', 'Sync error captured and sent to Revi', 'error');
+    }
+  }
+
+  async triggerAsyncError() {
+    try {
+      await this.errorHandler.captureAsyncError(
+        async () => {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          throw new Error('Test asynchronous error from vanilla JS');
+        },
+        {
+          component: 'App',
+          method: 'triggerAsyncError',
+        }
+      );
+    } catch (error) {
+      this.updateStatus('error-status', 'Async error captured and sent to Revi', 'error');
+    }
+  }
+
+  trackUserAction() {
+    this.revi.addBreadcrumb('User clicked track action button', {
+      category: 'user-interaction',
+      component: 'App',
+      action: 'track-action',
+    });
+    
+    this.updateStatus('error-status', 'User action tracked in Revi', 'success');
+  }
+
+  // Form handling
+  async handleContactForm(form) {
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    this.revi.addBreadcrumb('Contact form submission started');
+    
+    try {
+      await this.errorHandler.captureAsyncError(
+        async () => {
+          // Simulate API call
+          const response = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Form submission failed: ${response.status}`);
+          }
+
+          return response.json();
+        },
+        {
+          component: 'ContactForm',
+          formFields: Object.keys(data), // Don't send actual form data
+        }
+      );
+
+      this.revi.addBreadcrumb('Contact form submitted successfully');
+      this.updateStatus('form-status', 'Form submitted successfully!', 'success');
+      form.reset();
+      
+    } catch (error) {
+      this.updateStatus('form-status', 'Form submission failed. Error captured by Revi.', 'error');
+    }
+  }
+
+  // API testing functions
+  async testApiCall() {
+    this.revi.addBreadcrumb('Testing successful API call');
+    
+    try {
+      const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
+      const data = await response.json();
+      
+      this.updateStatus('api-status', `API call successful: ${data.title}`, 'success');
+    } catch (error) {
+      this.errorHandler.captureError(error, {
+        component: 'App',
+        method: 'testApiCall',
+      });
+      
+      this.updateStatus('api-status', 'API call failed. Error captured by Revi.', 'error');
+    }
+  }
+
+  async testFailedApiCall() {
+    this.revi.addBreadcrumb('Testing failed API call');
+    
+    try {
+      const response = await fetch('https://jsonplaceholder.typicode.com/posts/nonexistent');
+      
+      if (!response.ok) {
+        throw new Error(`API call failed with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      this.updateStatus('api-status', 'Unexpected success', 'success');
+    } catch (error) {
+      this.errorHandler.captureError(error, {
+        component: 'App',
+        method: 'testFailedApiCall',
+      });
+      
+      this.updateStatus('api-status', 'API call failed as expected. Error captured by Revi.', 'error');
+    }
+  }
+
+  // Utility function to update status messages
+  updateStatus(elementId, message, type) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.textContent = message;
+      element.className = `status ${type}`;
+      
+      // Clear after 5 seconds
+      setTimeout(() => {
+        element.textContent = '';
+        element.className = 'status';
+      }, 5000);
+    }
+  }
+}
+
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  window.app = new App();
+});
+```
+
+## Build Integration
+
+### Webpack Configuration
+
+```javascript
+// webpack.config.js
+const path = require('path');
+
+module.exports = {
+  entry: './src/main.js',
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'dist'),
+  },
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-env']
+          }
+        }
+      }
+    ]
+  },
+  resolve: {
+    extensions: ['.js'],
+  },
+  devServer: {
+    contentBase: './dist',
+    hot: true,
+  },
+};
+```
+
+### Rollup Configuration
+
+```javascript
+// rollup.config.js
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+import { terser } from 'rollup-plugin-terser';
+
+export default {
+  input: 'src/main.js',
+  output: {
+    file: 'dist/bundle.js',
+    format: 'iife',
+    name: 'App'
+  },
+  plugins: [
+    resolve(),
+    commonjs(),
+    terser() // Minify for production
+  ]
+};
+```
+
+### Package.json Scripts
+
+```json
+{
+  "scripts": {
+    "dev": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "build:rollup": "rollup -c",
+    "serve": "http-server dist"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.x.x",
+    "@babel/preset-env": "^7.x.x",
+    "babel-loader": "^8.x.x",
+    "webpack": "^5.x.x",
+    "webpack-cli": "^4.x.x",
+    "webpack-dev-server": "^4.x.x"
+  }
+}
+```
+
+## Environment Configuration
+
+### Configuration Manager
+
+```javascript
+// config.js
+export class Config {
+  constructor() {
+    this.env = this.detectEnvironment();
+    this.config = this.getConfig();
+  }
+
+  detectEnvironment() {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'development';
+      } else if (hostname.includes('staging')) {
+        return 'staging';
+      } else {
+        return 'production';
+      }
+    }
+    return 'production';
+  }
+
+  getConfig() {
+    const configs = {
+      development: {
+        reviApiKey: 'revi_dev_key',
+        reviApiUrl: 'http://localhost:4000',
+        debug: true,
+        sessionSampleRate: 1.0,
+      },
+      staging: {
+        reviApiKey: 'revi_staging_key',
+        reviApiUrl: 'https://staging-revi-backend.com',
+        debug: true,
+        sessionSampleRate: 0.5,
+      },
+      production: {
+        reviApiKey: 'revi_prod_key',
+        reviApiUrl: 'https://your-revi-backend.com',
+        debug: false,
+        sessionSampleRate: 0.1,
+      },
+    };
+
+    return configs[this.env];
+  }
+
+  get(key) {
+    return this.config[key];
+  }
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Module import errors:**
+- Ensure you're using ES6 modules correctly
+- Check file extensions and paths
+- Verify browser support for modules
+
+**CDN loading issues:**
+- Check network connectivity
+- Verify CDN URL is correct
+- Use specific version instead of @latest for production
+
+**Environment detection:**
+- Ensure proper environment configuration
+- Check console for initialization errors
+- Verify API keys are correct for each environment
+
+### Debug Helper
+
+```javascript
+// debug.js
+export class DebugHelper {
+  constructor(revi) {
+    this.revi = revi;
+    this.setupDebugMode();
+  }
+
+  setupDebugMode() {
+    if (window.location.search.includes('debug=true')) {
+      this.enableDebugMode();
+    }
+  }
+
+  enableDebugMode() {
+    // Show debug panel
+    const debugPanel = document.createElement('div');
+    debugPanel.style.cssText = `
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #1a1a1a;
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 9999;
+      font-size: 12px;
+      max-width: 300px;
+    `;
+    
+    debugPanel.innerHTML = `
+      <strong>Revi Debug</strong><br>
+      Session: ${this.revi.sessionId?.slice(0, 8)}...<br>
+      <button onclick="console.log('Revi:', window.Revi)">Log Monitor</button>
+      <button onclick="window.Revi.addBreadcrumb('Debug test')">Test Breadcrumb</button>
+    `;
+    
+    document.body.appendChild(debugPanel);
+    
+    // Log all breadcrumbs
+    console.log('Revi Debug Mode Enabled');
+  }
+}
+```
+
+## Next Steps
+
+- [Configure Error Grouping](/docs/errors/grouping)
+- [Set Up Session Replay](/docs/replay/setup)
+- [Monitor Performance](/docs/performance/web-vitals)

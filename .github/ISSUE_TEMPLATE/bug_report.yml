@@ -1,0 +1,168 @@
+name: 🐛 Bug Report
+description: Create a report to help us improve Revi
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! The more details you provide, the better we can help.
+
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Prerequisites
+      description: Please confirm before submitting
+      options:
+        - label: I have searched existing issues to make sure this bug hasn't already been reported
+          required: true
+        - label: I have tested this on the latest version of Revi
+          required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Describe what went wrong...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear description of what you expected to happen
+      placeholder: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: What happened instead of the expected behavior?
+    validations:
+      required: true
+
+  - type: input
+    id: revi-version
+    attributes:
+      label: Revi Version
+      description: Which version of Revi are you using?
+      placeholder: "e.g., 1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is affected?
+      options:
+        - SDK (JavaScript/TypeScript)
+        - Dashboard (Next.js app)
+        - Backend (Encore.ts API)
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      description: Which browser are you using? (if applicable)
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Other
+        - Not applicable
+
+  - type: input
+    id: browser-version
+    attributes:
+      label: Browser Version
+      description: Browser version (if applicable)
+      placeholder: "e.g., Chrome 91.0.4472.124"
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: Which OS are you using?
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS Version
+      description: Operating system version
+      placeholder: "e.g., macOS 12.0, Windows 11, Ubuntu 20.04"
+
+  - type: dropdown
+    id: framework
+    attributes:
+      label: Framework (if using SDK)
+      description: Which framework are you using with Revi?
+      options:
+        - React
+        - Vue.js
+        - Angular
+        - Next.js
+        - Vanilla JavaScript
+        - Other
+        - Not applicable
+
+  - type: input
+    id: framework-version
+    attributes:
+      label: Framework Version
+      description: Framework version (if applicable)
+      placeholder: "e.g., React 18.2.0"
+
+  - type: textarea
+    id: error-logs
+    attributes:
+      label: Error Messages/Logs
+      description: Any error messages or relevant logs
+      placeholder: Paste error messages, stack traces, or console logs here
+      render: text
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem
+      placeholder: Drag and drop screenshots here or paste image URLs
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: Any additional information that might be relevant...

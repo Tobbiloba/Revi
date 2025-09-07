@@ -200,16 +200,20 @@ const Hero = () => {
                                 </p>
                                 <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-4">
                                     <div className="flex flex-col items-center sm:items-start">
-                                        <span className="text-emerald-400 font-medium text-sm sm:text-base">50+</span>
-                                        <span className="text-white/60 text-xs font-light text-center sm:text-left">Integrations</span>
-                                    </div>
-                                    <div className="flex flex-col items-center sm:items-start">
                                         <span className="text-emerald-400 font-medium text-sm sm:text-base">99.9%</span>
-                                        <span className="text-white/60 text-xs font-light text-center sm:text-left">Uptime SLA</span>
+                                        <span className="text-white/60 text-xs font-light text-center sm:text-left">Error Detection</span>
                                     </div>
                                     <div className="flex flex-col items-center sm:items-start">
-                                        <span className="text-emerald-400 font-medium text-sm sm:text-base">&lt;100ms</span>
-                                        <span className="text-white/60 text-xs font-light text-center sm:text-left">Performance Impact</span>
+                                        <span className="text-emerald-400 font-medium text-sm sm:text-base">&lt;50ms</span>
+                                        <span className="text-white/60 text-xs font-light text-center sm:text-left">Overhead Impact</span>
+                                    </div>
+                                    <div className="flex flex-col items-center sm:items-start">
+                                        <span className="text-emerald-400 font-medium text-sm sm:text-base">100%</span>
+                                        <span className="text-white/60 text-xs font-light text-center sm:text-left">Session Capture</span>
+                                    </div>
+                                    <div className="flex flex-col items-center sm:items-start">
+                                        <span className="text-emerald-400 font-medium text-sm sm:text-base">24/7</span>
+                                        <span className="text-white/60 text-xs font-light text-center sm:text-left">Monitoring</span>
                                     </div>
                                 </div>
                             </div>

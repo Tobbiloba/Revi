@@ -78,7 +78,7 @@ export function SessionListView({ projectId }: SessionListViewProps) {
     }
 
     return params;
-  }, [projectId, page, filters]);
+  }, [page, filters]);
 
   const { data, isLoading, error, refetch, isFetching } = useSessions(queryParams);
 

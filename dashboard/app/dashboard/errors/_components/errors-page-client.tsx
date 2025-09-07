@@ -77,7 +77,7 @@ const mockImpactData = [
 
 export function ErrorsPageClient() {
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
-  const [selectedErrors, setSelectedErrors] = useState<string[]>([]);
+  const [selectedErrors] = useState<string[]>([]);
 
   return (
     <div className="w-full space-y-6">

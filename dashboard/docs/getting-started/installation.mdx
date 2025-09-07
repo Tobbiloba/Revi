@@ -1,0 +1,355 @@
+---
+title: Installation
+description: Complete installation guide for setting up Revi error monitoring in your development environment, including backend, dashboard, and SDK components.
+date: 2025-09-07
+---
+
+## Architecture Overview
+
+Revi consists of three main components:
+- **Backend API**: Encore.ts-based service for data collection and storage
+- **Dashboard**: Next.js web application for monitoring and analytics
+- **SDK**: Client-side JavaScript library for error capture and session recording
+
+<Steps>
+  <Step>
+    <StepTitle>Step 1: Clone the Repository</StepTitle>
+    <StepContent>
+    <div>
+      <div>
+        Clone the Revi repository to get started:
+      </div>
+      ```sh
+      git clone https://github.com/Tobbiloba/Revi.git
+      cd revi
+      ```
+      </div>
+    </StepContent>
+  </Step>
+  
+  <Step>
+    <StepTitle>Step 2: Set Up the Backend</StepTitle>
+    <StepContent>
+    <div>
+      The Revi backend is built with Encore.ts and requires PostgreSQL.
+      
+      **Install Encore CLI:**
+      ```sh
+      curl -L https://encore.dev/install.sh | bash
+      ```
+      
+      **Navigate to the backend directory:**
+      ```sh
+      cd backend
+      ```
+      
+      **Install dependencies:**
+      <CodeTabs tabs={{
+        'npm':{
+          syntax:'npm install'
+        },
+        'pnpm':{
+          syntax:'pnpm install'
+        },
+        'yarn':{
+          syntax:'yarn install'
+        },
+       }} />
+       
+      **Set up environment variables:**
+      ```sh
+      cp .env.example .env
+      # Edit .env with your database credentials
+      ```
+      
+      **Run database migrations:**
+      ```sh
+      encore db migrate
+      ```
+      
+      **Start the backend server:**
+      ```sh
+      encore run
+      ```
+      
+      The backend will be available at `http://localhost:4000`
+      </div>
+    </StepContent>
+  </Step>
+
+  <Step>
+    <StepTitle>Step 3: Set Up the Dashboard</StepTitle>
+    <StepContent>
+    <div>
+      The dashboard is a Next.js application that provides the web interface.
+      
+      **Navigate to the dashboard directory:**
+      ```sh
+      cd ../dashboard
+      ```
+      
+      **Install dependencies:**
+      <CodeTabs tabs={{
+        'npm':{
+          syntax:'npm install'
+        },
+        'pnpm':{
+          syntax:'pnpm install'
+        },
+        'yarn':{
+          syntax:'yarn install'
+        },
+       }} />
+       
+      **Configure environment variables:**
+      ```sh
+      cp .env.example .env
+      ```
+      
+      Edit `.env` with your configuration:
+      ```env
+      DATABASE_URL=postgresql://user:password@localhost:5432/revi
+      NEXT_PUBLIC_REVI_API_URL=http://localhost:4000
+      BETTER_AUTH_SECRET=your-auth-secret-here
+      GOOGLE_CLIENT_ID=your-google-oauth-client-id
+      GOOGLE_CLIENT_SECRET=your-google-oauth-secret
+      ```
+      
+      **Set up the database schema:**
+      ```sh
+      npx drizzle-kit push
+      ```
+      
+      **Start the dashboard:**
+      <CodeTabs tabs={{
+        'npm':{
+          syntax:'npm run dev'
+        },
+        'pnpm':{
+          syntax:'pnpm dev'
+        },
+        'yarn':{
+          syntax:'yarn dev'
+        },
+       }} />
+       
+      The dashboard will be available at `http://localhost:3000`
+      </div>
+    </StepContent>
+  </Step>
+
+  <Step>
+    <StepTitle>Step 4: Build and Test the SDK</StepTitle>
+    <StepContent>
+    <div>
+      The SDK is the client-side library that captures errors and user sessions.
+      
+      **Navigate to the SDK directory:**
+      ```sh
+      cd ../sdk
+      ```
+      
+      **Install dependencies:**
+      <CodeTabs tabs={{
+        'npm':{
+          syntax:'npm install'
+        },
+        'pnpm':{
+          syntax:'pnpm install'
+        },
+        'yarn':{
+          syntax:'yarn install'
+        },
+       }} />
+       
+      **Build the SDK:**
+      <CodeTabs tabs={{
+        'npm':{
+          syntax:'npm run build'
+        },
+        'pnpm':{
+          syntax:'pnpm build'
+        },
+        'yarn':{
+          syntax:'yarn build'
+        },
+       }} />
+       
+      **Test the SDK (optional):**
+      <CodeTabs tabs={{
+        'npm':{
+          syntax:'npm test'
+        },
+        'pnpm':{
+          syntax:'pnpm test'
+        },
+        'yarn':{
+          syntax:'yarn test'
+        },
+       }} />
+       
+      **Create a test application:**
+      ```sh
+      cd examples/react-demo
+      npm install
+      npm start
+      ```
+      </div>
+    </StepContent>
+  </Step>
+
+  <Step>
+    <StepTitle>Step 5: Create Your First Project</StepTitle>
+    <StepContent>
+    <div>
+      <p>Now that everything is running, create your first monitoring project:</p>
+
+      1. Open the dashboard at `http://localhost:3000`
+      2. Sign in with Google OAuth or create an account
+      3. Click "Create New Project" and fill in the details
+      4. Copy the generated API key
+      5. Use the API key in your applications with the Revi SDK
+
+      **Your project structure should look like this:**
+      <FolderTree className="overflow-hidden p-2">
+        <Folder element="revi" defaultOpen={true}>
+          <Folder element="backend" defaultOpen={true}>
+            <File>
+              <p>encore.app</p>
+            </File>
+            <File>
+              <p>package.json</p>
+            </File>
+          </Folder>
+          <Folder element="dashboard">
+            <File>
+              <p>package.json</p>
+            </File>
+            <File>
+              <p>.env</p>
+            </File>
+          </Folder>
+          <Folder element="sdk">
+            <File>
+              <p>package.json</p>
+            </File>
+            <File>
+              <p>dist/</p>
+            </File>
+          </Folder>
+        </Folder>
+      </FolderTree>
+      </div>
+    </StepContent>
+  </Step>
+</Steps>
+
+## Environment Configuration
+
+### Backend Environment Variables
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/revi
+
+# API Settings
+PORT=4000
+NODE_ENV=development
+
+# Optional: External integrations
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+```
+
+### Dashboard Environment Variables
+
+```env
+# Database (same as backend)
+DATABASE_URL=postgresql://user:password@localhost:5432/revi
+
+# Application URLs
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_REVI_API_URL=http://localhost:4000
+NEXT_PUBLIC_REVI_PROJECT_ID=1
+
+# Authentication
+BETTER_AUTH_SECRET=your-long-random-secret-key-here
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+```
+
+## Development Workflow
+
+### Starting the Full Stack
+
+```sh
+# Terminal 1: Start the backend
+cd backend && encore run
+
+# Terminal 2: Start the dashboard
+cd dashboard && npm run dev
+
+# Terminal 3: Build/watch the SDK (if developing)
+cd sdk && npm run build:watch
+```
+
+### Database Management
+
+**Reset the database:**
+```sh
+cd backend && encore db reset
+cd dashboard && npx drizzle-kit push
+```
+
+**View database contents:**
+```sh
+cd backend && encore db shell
+```
+
+### Building for Production
+
+**Backend:**
+```sh
+cd backend && encore build
+```
+
+**Dashboard:**
+```sh
+cd dashboard && npm run build
+```
+
+**SDK:**
+```sh
+cd sdk && npm run build
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Port conflicts:**
+- Backend: Change port in `encore.app` or set `PORT` environment variable
+- Dashboard: Use `npm run dev -- -p 3001` to use a different port
+
+**Database connection errors:**
+- Ensure PostgreSQL is running
+- Check `DATABASE_URL` in both backend and dashboard `.env` files
+- Run database migrations: `encore db migrate` and `npx drizzle-kit push`
+
+**Authentication not working:**
+- Verify Google OAuth credentials are correct
+- Ensure `BETTER_AUTH_SECRET` is set and matches between components
+- Check that callback URLs are configured in Google Console
+
+**SDK not capturing errors:**
+- Verify the backend is running and accessible
+- Check browser network tab for API call errors
+- Ensure the API key is correct and the project exists
+
+### Getting Help
+
+- **Documentation**: Continue reading the guides in this documentation
+- **GitHub Issues**: Report bugs and request features
+- **Discord Community**: Join our developer community for real-time help
+
+🎉 **Congratulations!** You now have a complete Revi installation running locally. Continue to the [Quick Start Guide](/docs/getting-started/quick-start) to integrate Revi into your first application.

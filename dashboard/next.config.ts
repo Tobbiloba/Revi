@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
+import { withContentlayer } from 'next-contentlayer2';
 
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
+        hostname: 'avatars.githubusercontent.com',
         port: '',
         pathname: '/**',
       },
@@ -13,4 +14,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withContentlayer(nextConfig);

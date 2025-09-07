@@ -1,0 +1,814 @@
+---
+title: 'Angular Integration'
+description: 'Complete guide to integrating Revi error monitoring and session replay in your Angular application with dependency injection and error handlers.'
+date: 2025-09-07
+---
+
+# Angular Integration
+
+Integrate Revi seamlessly into your Angular application for comprehensive error monitoring and session replay. This guide covers Angular 12+ with full TypeScript support.
+
+## Quick Setup
+
+### 1. Install Revi SDK
+
+```bash
+npm install revi-monitor
+```
+
+### 2. Create Revi Service
+
+Create `src/app/services/revi.service.ts`:
+
+```typescript
+// src/app/services/revi.service.ts
+import { Injectable } from '@angular/core';
+import { Monitor } from 'revi-monitor';
+import { environment } from '../../environments/environment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ReviService {
+  private monitor: Monitor | null = null;
+
+  constructor() {
+    this.initializeRevi();
+  }
+
+  private initializeRevi() {
+    if (!environment.reviApiKey) {
+      console.warn('Revi: API key not found in environment');
+      return;
+    }
+
+    this.monitor = new Monitor({
+      apiKey: environment.reviApiKey,
+      apiUrl: environment.reviApiUrl || 'https://your-revi-backend.com',
+      environment: environment.production ? 'production' : 'development',
+      debug: !environment.production,
+      sampleRate: 1.0,
+      sessionSampleRate: environment.production ? 0.1 : 1.0,
+      privacy: {
+        maskInputs: true,
+        maskPasswords: true,
+        maskCreditCards: true,
+      },
+      performance: {
+        captureWebVitals: true,
+        captureNavigationTiming: true,
+      },
+      replay: {
+        enabled: true,
+        maskAllInputs: false,
+        maskAllText: false,
+      },
+    });
+
+    // Start monitoring
+    this.monitor.start();
+
+    // Development debugging
+    if (!environment.production) {
+      (window as any).Revi = this.monitor;
+    }
+  }
+
+  captureException(error: Error, context?: Record<string, any>) {
+    if (this.monitor) {
+      this.monitor.captureException(error, {
+        tags: { source: 'angular-manual' },
+        extra: context,
+      });
+    }
+  }
+
+  async captureAsyncError<T>(
+    asyncFn: () => Promise<T>,
+    context: Record<string, any> = {}
+  ): Promise<T> {
+    try {
+      return await asyncFn();
+    } catch (error) {
+      this.captureException(error as Error, {
+        ...context,
+        type: 'async-error',
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
+  }
+
+  setUser(user: { id: string; email?: string; name?: string }) {
+    if (this.monitor) {
+      this.monitor.setUser(user);
+    }
+  }
+
+  addBreadcrumb(message: string, data?: Record<string, any>) {
+    if (this.monitor) {
+      this.monitor.addBreadcrumb(message, {
+        category: 'angular-breadcrumb',
+        ...data,
+      });
+    }
+  }
+
+  setContext(key: string, value: any) {
+    if (this.monitor) {
+      this.monitor.setContext(key, value);
+    }
+  }
+
+  getMonitor(): Monitor | null {
+    return this.monitor;
+  }
+}
+```
+
+### 3. Create Error Handler
+
+Create `src/app/services/global-error-handler.service.ts`:
+
+```typescript
+// src/app/services/global-error-handler.service.ts
+import { ErrorHandler, Injectable, NgZone } from '@angular/core';
+import { ReviService } from './revi.service';
+
+@Injectable()
+export class GlobalErrorHandler implements ErrorHandler {
+  
+  constructor(
+    private reviService: ReviService,
+    private zone: NgZone
+  ) {}
+
+  handleError(error: any): void {
+    // Capture error with Revi
+    this.reviService.captureException(error, {
+      tags: {
+        source: 'angular-error-handler',
+      },
+      extra: {
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    // Log to console in development
+    if (!this.isProduction()) {
+      console.error('Global error caught by Revi:', error);
+    }
+
+    // Ensure error handling doesn't break Angular's zone
+    this.zone.run(() => {
+      // Handle error UI updates here if needed
+    });
+  }
+
+  private isProduction(): boolean {
+    // Check your environment configuration
+    return window.location.hostname !== 'localhost';
+  }
+}
+```
+
+### 4. Configure App Module
+
+Update `src/app/app.module.ts`:
+
+```typescript
+// src/app/app.module.ts
+import { NgModule, ErrorHandler } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { ReviService } from './services/revi.service';
+import { GlobalErrorHandler } from './services/global-error-handler.service';
+import { ReviInterceptor } from './interceptors/revi.interceptor';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    // Your other components
+  ],
+  imports: [
+    BrowserModule,
+    AppRoutingModule,
+    HttpClientModule,
+  ],
+  providers: [
+    ReviService,
+    {
+      provide: ErrorHandler,
+      useClass: GlobalErrorHandler,
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: ReviInterceptor,
+      multi: true,
+    },
+  ],
+  bootstrap: [AppComponent]
+})
+export class AppModule {
+  constructor(private reviService: ReviService) {
+    // Ensure Revi service is initialized
+  }
+}
+```
+
+### 5. Environment Configuration
+
+Update your environment files:
+
+```typescript
+// src/environments/environment.ts
+export const environment = {
+  production: false,
+  reviApiKey: 'revi_your_dev_api_key',
+  reviApiUrl: 'http://localhost:4000', // Your local backend URL
+};
+```
+
+```typescript
+// src/environments/environment.prod.ts
+export const environment = {
+  production: true,
+  reviApiKey: 'revi_your_prod_api_key',
+  reviApiUrl: 'https://your-revi-backend.com',
+};
+```
+
+## HTTP Interceptor for API Monitoring
+
+Create `src/app/interceptors/revi.interceptor.ts`:
+
+```typescript
+// src/app/interceptors/revi.interceptor.ts
+import { Injectable } from '@angular/core';
+import { HttpInterceptor, HttpRequest, HttpHandler, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
+import { ReviService } from '../services/revi.service';
+
+@Injectable()
+export class ReviInterceptor implements HttpInterceptor {
+
+  constructor(private reviService: ReviService) {}
+
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<any> {
+    const startTime = Date.now();
+
+    // Add request breadcrumb
+    this.reviService.addBreadcrumb(`HTTP ${req.method} ${req.url}`, {
+      category: 'http-request',
+      method: req.method,
+      url: req.url,
+    });
+
+    return next.handle(req).pipe(
+      tap(response => {
+        // Log successful requests
+        const duration = Date.now() - startTime;
+        this.reviService.addBreadcrumb(`HTTP ${req.method} ${req.url} - Success`, {
+          category: 'http-success',
+          method: req.method,
+          url: req.url,
+          status: response.status || 200,
+          duration,
+        });
+      }),
+      catchError((error: HttpErrorResponse) => {
+        // Capture HTTP errors
+        const duration = Date.now() - startTime;
+        
+        this.reviService.captureException(
+          new Error(`HTTP ${error.status}: ${error.message}`),
+          {
+            tags: {
+              source: 'http-interceptor',
+              method: req.method,
+              status: error.status,
+            },
+            extra: {
+              url: req.url,
+              requestBody: req.body,
+              responseBody: error.error,
+              duration,
+              headers: req.headers.keys().reduce((acc, key) => {
+                acc[key] = req.headers.get(key);
+                return acc;
+              }, {} as Record<string, string | null>),
+            },
+          }
+        );
+
+        return throwError(() => error);
+      })
+    );
+  }
+}
+```
+
+## Router Integration
+
+Create `src/app/services/revi-router.service.ts`:
+
+```typescript
+// src/app/services/revi-router.service.ts
+import { Injectable } from '@angular/core';
+import { Router, NavigationEnd, NavigationError } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { ReviService } from './revi.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ReviRouterService {
+
+  constructor(
+    private router: Router,
+    private reviService: ReviService
+  ) {
+    this.initializeRouterTracking();
+  }
+
+  private initializeRouterTracking() {
+    // Track successful navigation
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: NavigationEnd) => {
+      this.reviService.addBreadcrumb(`Navigation to ${event.url}`, {
+        category: 'navigation',
+        url: event.url,
+        urlAfterRedirects: event.urlAfterRedirects,
+      });
+
+      this.reviService.setContext('route', {
+        url: event.url,
+        urlAfterRedirects: event.urlAfterRedirects,
+      });
+    });
+
+    // Track navigation errors
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationError)
+    ).subscribe((event: NavigationError) => {
+      this.reviService.captureException(
+        new Error(`Navigation error: ${event.error}`),
+        {
+          tags: {
+            source: 'angular-router',
+          },
+          extra: {
+            url: event.url,
+            error: event.error,
+          },
+        }
+      );
+    });
+  }
+}
+```
+
+Add to your `app.module.ts` providers:
+
+```typescript
+import { ReviRouterService } from './services/revi-router.service';
+
+// In providers array:
+ReviRouterService, // This will auto-initialize routing tracking
+```
+
+## Component Usage Examples
+
+### Basic Component with Revi
+
+```typescript
+// src/app/components/example.component.ts
+import { Component, OnInit } from '@angular/core';
+import { ReviService } from '../services/revi.service';
+
+@Component({
+  selector: 'app-example',
+  template: `
+    <div>
+      <h2>Example Component</h2>
+      <button (click)="triggerError()">Test Error</button>
+      <button (click)="testAsync()">Test Async</button>
+      <button (click)="trackAction()">Track Action</button>
+    </div>
+  `
+})
+export class ExampleComponent implements OnInit {
+
+  constructor(private reviService: ReviService) {}
+
+  ngOnInit() {
+    this.reviService.addBreadcrumb('ExampleComponent initialized');
+  }
+
+  triggerError() {
+    try {
+      throw new Error('Test error from Angular component');
+    } catch (error) {
+      this.reviService.captureException(error as Error, {
+        component: 'ExampleComponent',
+        method: 'triggerError',
+      });
+    }
+  }
+
+  async testAsync() {
+    await this.reviService.captureAsyncError(
+      async () => {
+        // Simulate async operation
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        throw new Error('Test async error');
+      },
+      {
+        component: 'ExampleComponent',
+        method: 'testAsync',
+      }
+    );
+  }
+
+  trackAction() {
+    this.reviService.addBreadcrumb('User clicked track action', {
+      component: 'ExampleComponent',
+      action: 'track-action',
+    });
+  }
+}
+```
+
+### Service with Error Handling
+
+```typescript
+// src/app/services/api.service.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
+import { ReviService } from './revi.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ApiService {
+
+  constructor(
+    private http: HttpClient,
+    private reviService: ReviService
+  ) {}
+
+  getData(): Observable<any> {
+    this.reviService.addBreadcrumb('API: Fetching data');
+
+    return this.http.get('/api/data').pipe(
+      tap(data => {
+        this.reviService.addBreadcrumb('API: Data fetched successfully', {
+          recordCount: Array.isArray(data) ? data.length : 1,
+        });
+      }),
+      catchError(error => {
+        this.reviService.captureException(error, {
+          service: 'ApiService',
+          method: 'getData',
+          endpoint: '/api/data',
+        });
+        return throwError(() => error);
+      })
+    );
+  }
+
+  async submitForm(data: any): Promise<any> {
+    return this.reviService.captureAsyncError(
+      async () => {
+        this.reviService.addBreadcrumb('API: Submitting form');
+        
+        const response = await this.http.post('/api/submit', data).toPromise();
+        
+        this.reviService.addBreadcrumb('API: Form submitted successfully');
+        return response;
+      },
+      {
+        service: 'ApiService',
+        method: 'submitForm',
+        endpoint: '/api/submit',
+      }
+    );
+  }
+}
+```
+
+### Form Component with Validation
+
+```typescript
+// src/app/components/contact-form.component.ts
+import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReviService } from '../services/revi.service';
+
+@Component({
+  selector: 'app-contact-form',
+  template: `
+    <form [formGroup]="contactForm" (ngSubmit)="onSubmit()">
+      <div>
+        <input formControlName="email" type="email" placeholder="Email">
+        <div *ngIf="contactForm.get('email')?.invalid && contactForm.get('email')?.touched">
+          Email is required
+        </div>
+      </div>
+      
+      <div>
+        <textarea formControlName="message" placeholder="Message"></textarea>
+        <div *ngIf="contactForm.get('message')?.invalid && contactForm.get('message')?.touched">
+          Message is required
+        </div>
+      </div>
+      
+      <button type="submit" [disabled]="contactForm.invalid">Submit</button>
+    </form>
+  `
+})
+export class ContactFormComponent {
+  contactForm: FormGroup;
+
+  constructor(
+    private fb: FormBuilder,
+    private reviService: ReviService
+  ) {
+    this.contactForm = this.fb.group({
+      email: ['', [Validators.required, Validators.email]],
+      message: ['', Validators.required]
+    });
+
+    // Track form interactions
+    this.contactForm.valueChanges.subscribe(() => {
+      if (this.contactForm.dirty) {
+        this.reviService.addBreadcrumb('Form field changed', {
+          component: 'ContactFormComponent',
+          valid: this.contactForm.valid,
+        });
+      }
+    });
+  }
+
+  async onSubmit() {
+    if (this.contactForm.valid) {
+      this.reviService.addBreadcrumb('Form submission started');
+
+      try {
+        await this.reviService.captureAsyncError(
+          async () => {
+            // Simulate form submission
+            const response = await fetch('/api/contact', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.contactForm.value),
+            });
+
+            if (!response.ok) {
+              throw new Error(`Form submission failed: ${response.status}`);
+            }
+
+            return response.json();
+          },
+          {
+            component: 'ContactFormComponent',
+            formData: Object.keys(this.contactForm.value), // Don't send actual data
+          }
+        );
+
+        this.reviService.addBreadcrumb('Form submitted successfully');
+        this.contactForm.reset();
+      } catch (error) {
+        // Error already captured by captureAsyncError
+        console.error('Form submission failed:', error);
+      }
+    } else {
+      // Track validation errors
+      const errors = Object.keys(this.contactForm.controls)
+        .filter(key => this.contactForm.get(key)?.invalid)
+        .map(key => key);
+
+      this.reviService.captureException(
+        new Error('Form validation failed'),
+        {
+          component: 'ContactFormComponent',
+          invalidFields: errors,
+        }
+      );
+    }
+  }
+}
+```
+
+## User Authentication Integration
+
+```typescript
+// src/app/services/auth.service.ts
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { ReviService } from './revi.service';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
+
+  constructor(private reviService: ReviService) {}
+
+  login(credentials: { email: string; password: string }): Observable<User> {
+    return new Observable(observer => {
+      this.reviService.captureAsyncError(
+        async () => {
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials),
+          });
+
+          if (!response.ok) {
+            throw new Error('Login failed');
+          }
+
+          const user = await response.json();
+          
+          // Set user context in Revi
+          this.reviService.setUser({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          });
+
+          this.reviService.addBreadcrumb('User logged in', {
+            userId: user.id,
+            role: user.role,
+          });
+
+          this.currentUserSubject.next(user);
+          observer.next(user);
+          observer.complete();
+        },
+        {
+          service: 'AuthService',
+          method: 'login',
+        }
+      ).catch(error => observer.error(error));
+    });
+  }
+
+  logout() {
+    this.reviService.addBreadcrumb('User logged out');
+    this.currentUserSubject.next(null);
+    
+    // Clear user context
+    this.reviService.setUser({ id: 'anonymous' });
+  }
+}
+```
+
+## Testing Your Integration
+
+### Test Component
+
+```typescript
+// src/app/components/test-revi.component.ts
+import { Component } from '@angular/core';
+import { ReviService } from '../services/revi.service';
+
+@Component({
+  selector: 'app-test-revi',
+  template: `
+    <div class="test-container">
+      <h3>Test Revi Integration</h3>
+      <div class="button-group">
+        <button (click)="triggerSyncError()" class="btn btn-red">
+          Sync Error
+        </button>
+        <button (click)="triggerAsyncError()" class="btn btn-orange">
+          Async Error
+        </button>
+        <button (click)="triggerAngularError()" class="btn btn-purple">
+          Angular Error
+        </button>
+        <button (click)="trackAction()" class="btn btn-blue">
+          Track Action
+        </button>
+      </div>
+      
+      <div class="status" *ngIf="reviService.getMonitor()">
+        ✅ Revi is active
+      </div>
+    </div>
+  `,
+  styles: [`
+    .test-container {
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+    
+    .btn-red { background-color: #ef4444; }
+    .btn-orange { background-color: #f97316; }
+    .btn-purple { background-color: #8b5cf6; }
+    .btn-blue { background-color: #3b82f6; }
+    
+    .status {
+      margin-top: 1rem;
+      color: #10b981;
+      font-weight: bold;
+    }
+  `]
+})
+export class TestReviComponent {
+
+  constructor(public reviService: ReviService) {}
+
+  triggerSyncError() {
+    this.reviService.captureException(
+      new Error('Test synchronous error from Angular'),
+      {
+        testType: 'sync',
+        component: 'TestReviComponent',
+      }
+    );
+  }
+
+  async triggerAsyncError() {
+    await this.reviService.captureAsyncError(
+      async () => {
+        throw new Error('Test asynchronous error from Angular');
+      },
+      {
+        testType: 'async',
+        component: 'TestReviComponent',
+      }
+    );
+  }
+
+  triggerAngularError() {
+    // This will be caught by the global error handler
+    throw new Error('Test Angular error handler');
+  }
+
+  trackAction() {
+    this.reviService.addBreadcrumb('User clicked track action button', {
+      component: 'TestReviComponent',
+      action: 'track-action',
+    });
+  }
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Service not initialized:**
+- Ensure ReviService is injected in AppModule constructor
+- Check environment configuration is correct
+
+**Global error handler not working:**
+- Verify GlobalErrorHandler is provided in app.module.ts
+- Check for conflicting error handlers
+
+**HTTP interceptor not capturing requests:**
+- Ensure ReviInterceptor is provided with multi: true
+- Check import order in module
+
+## Next Steps
+
+- [Configure Error Grouping](/docs/errors/grouping)
+- [Set Up Session Replay](/docs/replay/setup)
+- [Monitor Performance](/docs/performance/web-vitals)

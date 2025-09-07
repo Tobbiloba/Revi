@@ -101,7 +101,7 @@ export function RevolutionarySessionReplay({ sessionId, className }: Revolutiona
     if (replayIframeRef.current !== stableIframe) {
       setStableIframe(replayIframeRef.current);
     }
-  }, [replayIframeRef.current, stableIframe]);
+  }, [stableIframe]);
   
   const { correlations, activeErrorId, addError, addInteraction, highlightError } = useErrorCorrelation(stableIframe);
 

@@ -106,8 +106,8 @@ const AuthSection = ({ visible }: { visible?: boolean }) => {
 export function Menubar() {
     const navItems = [
         { name: "Features", link: "#features" },
-        { name: "Documentation", link: "/docs" },
-        { name: "Pricing", link: "/pricing" },
+        { name: "Documentation", link: "/docs/getting-started/introduction" },
+        { name: "Pricing", link: "#" },
         { name: "Dashboard", link: "/dashboard" }
     ];
 

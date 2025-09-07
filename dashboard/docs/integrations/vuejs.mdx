@@ -1,0 +1,806 @@
+---
+title: 'Vue.js Integration'
+description: 'Complete guide to integrating Revi error monitoring and session replay in your Vue.js application with Vue 2 and Vue 3 support.'
+date: 2025-09-07
+---
+
+# Vue.js Integration
+
+Integrate Revi seamlessly into your Vue.js application for comprehensive error monitoring and session replay. This guide covers both Vue 2 and Vue 3.
+
+## Quick Setup
+
+### 1. Install Revi SDK
+
+```bash
+npm install revi-monitor
+```
+
+### 2. Create Revi Plugin
+
+Create `src/plugins/revi.js` (or `.ts` for TypeScript):
+
+```javascript
+// src/plugins/revi.js
+import { Monitor } from 'revi-monitor';
+
+let reviInstance = null;
+
+export const reviPlugin = {
+  install(app, options = {}) {
+    const {
+      apiKey,
+      apiUrl = 'https://your-revi-backend.com',
+      environment = process.env.NODE_ENV,
+      debug = process.env.NODE_ENV === 'development'
+    } = options;
+
+    if (!apiKey) {
+      console.warn('Revi: API key is required');
+      return;
+    }
+
+    // Create Revi monitor instance
+    reviInstance = new Monitor({
+      apiKey,
+      apiUrl,
+      environment,
+      debug,
+      sampleRate: 1.0,
+      sessionSampleRate: environment === 'production' ? 0.1 : 1.0,
+      privacy: {
+        maskInputs: true,
+        maskPasswords: true,
+        maskCreditCards: true,
+      },
+      performance: {
+        captureWebVitals: true,
+        captureNavigationTiming: true,
+      },
+      replay: {
+        enabled: true,
+        maskAllInputs: false,
+        maskAllText: false,
+      },
+    });
+
+    // Start monitoring
+    reviInstance.start();
+
+    // Vue 3 composition API
+    if (app.config) {
+      // Set up Vue 3 error handler
+      app.config.errorHandler = (error, instance, info) => {
+        reviInstance.captureException(error, {
+          tags: {
+            source: 'vue-error-handler',
+            componentName: instance?.$options.name || 'Unknown',
+            errorInfo: info,
+          },
+          extra: {
+            componentData: instance?.$data,
+            componentProps: instance?.$props,
+            lifecycle: info,
+          },
+        });
+        
+        // Re-throw error for development
+        if (debug) {
+          console.error('Vue Error:', error, instance, info);
+        }
+      };
+
+      // Add Revi to global properties
+      app.config.globalProperties.$revi = reviInstance;
+      
+      // Provide for composition API
+      app.provide('revi', reviInstance);
+    }
+    // Vue 2
+    else {
+      // Set up Vue 2 error handler
+      app.config.errorHandler = (error, vm, info) => {
+        reviInstance.captureException(error, {
+          tags: {
+            source: 'vue-error-handler',
+            componentName: vm?.$options.name || 'Unknown',
+            errorInfo: info,
+          },
+          extra: {
+            componentData: vm?.$data,
+            componentProps: vm?.$props,
+            lifecycle: info,
+          },
+        });
+        
+        if (debug) {
+          console.error('Vue Error:', error, vm, info);
+        }
+      };
+
+      // Add to Vue prototype
+      app.prototype.$revi = reviInstance;
+    }
+
+    // Development debugging
+    if (debug) {
+      window.Revi = reviInstance;
+    }
+  }
+};
+
+// Export instance for direct access
+export const getRevi = () => reviInstance;
+export default reviPlugin;
+```
+
+### 3. Install Plugin in Your App
+
+#### Vue 3 (main.js)
+
+```javascript
+// src/main.js
+import { createApp } from 'vue';
+import App from './App.vue';
+import { reviPlugin } from './plugins/revi';
+
+const app = createApp(App);
+
+// Install Revi plugin
+app.use(reviPlugin, {
+  apiKey: process.env.VUE_APP_REVI_API_KEY,
+  apiUrl: process.env.VUE_APP_REVI_API_URL,
+  environment: process.env.NODE_ENV,
+});
+
+app.mount('#app');
+```
+
+#### Vue 2 (main.js)
+
+```javascript
+// src/main.js
+import Vue from 'vue';
+import App from './App.vue';
+import { reviPlugin } from './plugins/revi';
+
+// Install Revi plugin
+Vue.use(reviPlugin, {
+  apiKey: process.env.VUE_APP_REVI_API_KEY,
+  apiUrl: process.env.VUE_APP_REVI_API_URL,
+  environment: process.env.NODE_ENV,
+});
+
+new Vue({
+  render: h => h(App),
+}).$mount('#app');
+```
+
+### 4. Environment Variables
+
+Add to your `.env` file:
+
+```env
+VUE_APP_REVI_API_KEY=revi_your_api_key_here
+VUE_APP_REVI_API_URL=https://your-revi-backend.com
+```
+
+## Composition API Usage (Vue 3)
+
+### Using with inject/provide
+
+```vue
+<template>
+  <div>
+    <button @click="triggerError">Test Error</button>
+    <button @click="captureUserAction">Track Action</button>
+  </div>
+</template>
+
+<script setup>
+import { inject } from 'vue';
+
+const revi = inject('revi');
+
+const triggerError = () => {
+  try {
+    throw new Error('Test error from Vue component');
+  } catch (error) {
+    revi.captureException(error, {
+      tags: { component: 'TestComponent' },
+      extra: { action: 'button-click' }
+    });
+  }
+};
+
+const captureUserAction = () => {
+  revi.addBreadcrumb('User clicked action button', {
+    category: 'user-interaction',
+    component: 'TestComponent'
+  });
+};
+</script>
+```
+
+### Composable for Revi (Vue 3)
+
+Create `src/composables/useRevi.js`:
+
+```javascript
+// src/composables/useRevi.js
+import { inject } from 'vue';
+
+export function useRevi() {
+  const revi = inject('revi');
+  
+  if (!revi) {
+    throw new Error('Revi is not available. Make sure the plugin is installed.');
+  }
+
+  const captureError = (error, context = {}) => {
+    revi.captureException(error, {
+      tags: { source: 'vue-manual' },
+      extra: context,
+    });
+  };
+
+  const captureAsyncError = async (asyncFn, context = {}) => {
+    try {
+      return await asyncFn();
+    } catch (error) {
+      captureError(error, {
+        ...context,
+        type: 'async-error',
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
+  };
+
+  const setUser = (user) => {
+    revi.setUser({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    });
+  };
+
+  const addBreadcrumb = (message, data = {}) => {
+    revi.addBreadcrumb(message, {
+      category: 'vue-breadcrumb',
+      ...data,
+    });
+  };
+
+  const setContext = (key, value) => {
+    revi.setContext(key, value);
+  };
+
+  return {
+    revi,
+    captureError,
+    captureAsyncError,
+    setUser,
+    addBreadcrumb,
+    setContext,
+  };
+}
+```
+
+Usage with composable:
+
+```vue
+<template>
+  <div>
+    <form @submit="handleSubmit">
+      <input v-model="email" type="email" placeholder="Email" />
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { useRevi } from '@/composables/useRevi';
+
+const email = ref('');
+const { captureAsyncError, addBreadcrumb } = useRevi();
+
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  
+  addBreadcrumb('Form submission started');
+  
+  await captureAsyncError(
+    async () => {
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.value }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Subscription failed: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    {
+      email: email.value,
+      component: 'SubscriptionForm',
+    }
+  );
+};
+</script>
+```
+
+## Options API Usage (Vue 2 & Vue 3)
+
+### Direct usage in components
+
+```vue
+<template>
+  <div>
+    <button @click="testError">Trigger Error</button>
+    <button @click="testAsync">Test Async</button>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'TestComponent',
+  
+  methods: {
+    testError() {
+      this.$revi.addBreadcrumb('User triggered test error');
+      
+      try {
+        throw new Error('Intentional test error');
+      } catch (error) {
+        this.$revi.captureException(error, {
+          tags: {
+            component: this.$options.name,
+            method: 'testError',
+          },
+          extra: {
+            userData: this.$data,
+          },
+        });
+      }
+    },
+
+    async testAsync() {
+      this.$revi.addBreadcrumb('Async operation started');
+      
+      try {
+        await this.simulateAsyncError();
+      } catch (error) {
+        this.$revi.captureException(error, {
+          tags: {
+            component: this.$options.name,
+            method: 'testAsync',
+            type: 'async',
+          },
+        });
+      }
+    },
+
+    async simulateAsyncError() {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      throw new Error('Async operation failed');
+    },
+  },
+
+  mounted() {
+    // Track component mount
+    this.$revi.addBreadcrumb(`${this.$options.name} component mounted`);
+  },
+
+  beforeDestroy() { // Vue 2
+    this.$revi.addBreadcrumb(`${this.$options.name} component destroyed`);
+  },
+
+  beforeUnmount() { // Vue 3
+    this.$revi.addBreadcrumb(`${this.$options.name} component unmounted`);
+  },
+};
+</script>
+```
+
+## Vue Router Integration
+
+### Track navigation events
+
+```javascript
+// src/router/index.js
+import { createRouter, createWebHistory } from 'vue-router'; // Vue 3
+// import VueRouter from 'vue-router'; // Vue 2
+import { getRevi } from '@/plugins/revi';
+
+const routes = [
+  // Your routes here
+];
+
+const router = createRouter({ // Vue 3
+// const router = new VueRouter({ // Vue 2
+  history: createWebHistory(process.env.BASE_URL), // Vue 3
+  // mode: 'history', // Vue 2
+  routes,
+});
+
+// Track navigation
+router.beforeEach((to, from, next) => {
+  const revi = getRevi();
+  
+  if (revi) {
+    revi.addBreadcrumb(`Navigation to ${to.path}`, {
+      category: 'navigation',
+      from: from.path,
+      to: to.path,
+      query: to.query,
+    });
+    
+    revi.setContext('route', {
+      path: to.path,
+      name: to.name,
+      params: to.params,
+      query: to.query,
+    });
+  }
+  
+  next();
+});
+
+// Track navigation errors
+router.onError((error) => {
+  const revi = getRevi();
+  
+  if (revi) {
+    revi.captureException(error, {
+      tags: {
+        source: 'vue-router',
+      },
+      extra: {
+        currentRoute: router.currentRoute.value || router.currentRoute,
+      },
+    });
+  }
+});
+
+export default router;
+```
+
+## Vuex/Pinia Integration
+
+### Vuex Store Integration
+
+```javascript
+// src/store/index.js
+import { createStore } from 'vuex'; // Vue 3
+// import Vuex from 'vuex'; // Vue 2
+import { getRevi } from '@/plugins/revi';
+
+const store = createStore({ // Vue 3
+// const store = new Vuex.Store({ // Vue 2
+  state: {
+    // your state
+  },
+  
+  mutations: {
+    // your mutations
+  },
+  
+  actions: {
+    async fetchData({ commit }, payload) {
+      const revi = getRevi();
+      
+      try {
+        revi.addBreadcrumb('Fetching data from API');
+        
+        const response = await fetch('/api/data');
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        commit('SET_DATA', data);
+        
+        return data;
+      } catch (error) {
+        revi.captureException(error, {
+          tags: {
+            source: 'vuex-action',
+            action: 'fetchData',
+          },
+          extra: {
+            payload,
+          },
+        });
+        
+        throw error;
+      }
+    },
+  },
+  
+  plugins: [
+    // Error tracking plugin
+    (store) => {
+      store.subscribe((mutation, state) => {
+        const revi = getRevi();
+        
+        if (revi) {
+          // Track mutations as breadcrumbs
+          revi.addBreadcrumb(`Vuex mutation: ${mutation.type}`, {
+            category: 'state-change',
+            mutation: mutation.type,
+            payload: mutation.payload,
+          });
+        }
+      });
+    },
+  ],
+});
+
+export default store;
+```
+
+### Pinia Store Integration
+
+```javascript
+// src/stores/example.js
+import { defineStore } from 'pinia';
+import { getRevi } from '@/plugins/revi';
+
+export const useExampleStore = defineStore('example', {
+  state: () => ({
+    data: null,
+    loading: false,
+    error: null,
+  }),
+
+  actions: {
+    async fetchData(params) {
+      const revi = getRevi();
+      
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        revi.addBreadcrumb('Pinia: Fetching data');
+        
+        const response = await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+        
+        this.data = await response.json();
+      } catch (error) {
+        this.error = error.message;
+        
+        revi.captureException(error, {
+          tags: {
+            source: 'pinia-store',
+            store: 'example',
+            action: 'fetchData',
+          },
+          extra: {
+            params,
+            storeState: { ...this.$state },
+          },
+        });
+        
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+  },
+});
+```
+
+## Testing Your Integration
+
+### Test Component (Vue 3)
+
+```vue
+<template>
+  <div class="test-revi">
+    <h3>Test Revi Integration</h3>
+    <div class="button-group">
+      <button @click="triggerSyncError" class="btn btn-red">
+        Sync Error
+      </button>
+      <button @click="triggerAsyncError" class="btn btn-orange">
+        Async Error
+      </button>
+      <button @click="triggerVueError" class="btn btn-purple">
+        Vue Error
+      </button>
+      <button @click="trackUserAction" class="btn btn-blue">
+        Track Action
+      </button>
+    </div>
+    
+    <div v-if="$revi" class="status">
+      ✅ Revi is active
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { useRevi } from '@/composables/useRevi';
+
+const { captureError, captureAsyncError, addBreadcrumb } = useRevi();
+
+const triggerSyncError = () => {
+  captureError(new Error('Test synchronous error from Vue'), {
+    testType: 'sync',
+    component: 'TestRevi',
+  });
+};
+
+const triggerAsyncError = async () => {
+  await captureAsyncError(
+    async () => {
+      throw new Error('Test asynchronous error from Vue');
+    },
+    {
+      testType: 'async',
+      component: 'TestRevi',
+    }
+  );
+};
+
+const triggerVueError = () => {
+  // This will be caught by Vue's error handler
+  throw new Error('Test Vue error handler');
+};
+
+const trackUserAction = () => {
+  addBreadcrumb('User clicked track action button', {
+    component: 'TestRevi',
+    action: 'track-action',
+  });
+};
+</script>
+
+<style scoped>
+.test-revi {
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+}
+
+.btn-red { background-color: #ef4444; }
+.btn-orange { background-color: #f97316; }
+.btn-purple { background-color: #8b5cf6; }
+.btn-blue { background-color: #3b82f6; }
+
+.status {
+  margin-top: 1rem;
+  color: #10b981;
+  font-weight: bold;
+}
+</style>
+```
+
+## TypeScript Support
+
+### Types definition
+
+```typescript
+// src/types/revi.d.ts
+import { Monitor } from 'revi-monitor';
+
+declare module '@vue/runtime-core' {
+  interface ComponentCustomProperties {
+    $revi: Monitor;
+  }
+}
+
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $revi: Monitor;
+  }
+}
+```
+
+### TypeScript composable
+
+```typescript
+// src/composables/useRevi.ts
+import { inject } from 'vue';
+import type { Monitor } from 'revi-monitor';
+
+export function useRevi() {
+  const revi = inject<Monitor>('revi');
+  
+  if (!revi) {
+    throw new Error('Revi is not available. Make sure the plugin is installed.');
+  }
+
+  const captureError = (error: Error, context: Record<string, any> = {}) => {
+    revi.captureException(error, {
+      tags: { source: 'vue-manual' },
+      extra: context,
+    });
+  };
+
+  const captureAsyncError = async <T>(
+    asyncFn: () => Promise<T>, 
+    context: Record<string, any> = {}
+  ): Promise<T> => {
+    try {
+      return await asyncFn();
+    } catch (error) {
+      captureError(error as Error, {
+        ...context,
+        type: 'async-error',
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
+  };
+
+  const setUser = (user: { id: string; email?: string; name?: string }) => {
+    revi.setUser(user);
+  };
+
+  const addBreadcrumb = (message: string, data: Record<string, any> = {}) => {
+    revi.addBreadcrumb(message, {
+      category: 'vue-breadcrumb',
+      ...data,
+    });
+  };
+
+  return {
+    revi,
+    captureError,
+    captureAsyncError,
+    setUser,
+    addBreadcrumb,
+  };
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Plugin not working:**
+- Ensure the plugin is installed before creating the Vue app instance
+- Check that API key is provided and valid
+
+**Errors not being captured:**
+- Verify Vue's error handler is set up correctly
+- Check browser console for Revi initialization errors
+
+**TypeScript errors:**
+- Make sure type definitions are properly imported
+- Check that TypeScript configuration includes the types
+
+## Next Steps
+
+- [Configure Error Grouping](/docs/errors/grouping)
+- [Set Up Session Replay](/docs/replay/setup)
+- [Monitor Performance](/docs/performance/web-vitals)

@@ -295,7 +295,7 @@ export function ErrorListView() {
     }
     
     return filtered;
-  }, [data?.errors, searchTerm, filters]);
+  }, [data?.errors, searchTerm, filters, getSeverityFromMetadata]);
 
   if (isLoading) {
     return <ErrorListSkeleton />;

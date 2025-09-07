@@ -1,0 +1,737 @@
+---
+title: 'React Integration'
+description: 'Complete guide to integrating Revi error monitoring and session replay in your React application with hooks, context providers, and error boundaries.'
+date: 2025-09-07
+---
+
+This guide covers integrating Revi with React 16+, including hooks, context providers, and error boundaries.
+
+## Installation
+
+### 1. Install Revi SDK
+
+```bash
+npm install revi-monitor
+```
+
+### 2. Create Revi Provider
+
+Create `src/providers/ReviProvider.tsx`:
+
+```tsx
+// src/providers/ReviProvider.tsx
+import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import { Monitor } from 'revi-monitor';
+
+interface ReviContextType {
+  monitor: Monitor | null;
+  captureError: (error: Error, context?: Record<string, any>) => void;
+  setUser: (user: { id: string; email?: string; name?: string }) => void;
+  addBreadcrumb: (message: string, data?: Record<string, any>) => void;
+}
+
+const ReviContext = createContext<ReviContextType>({
+  monitor: null,
+  captureError: () => {},
+  setUser: () => {},
+  addBreadcrumb: () => {},
+});
+
+export const useRevi = () => {
+  const context = useContext(ReviContext);
+  if (!context) {
+    throw new Error('useRevi must be used within a ReviProvider');
+  }
+  return context;
+};
+
+interface ReviProviderProps {
+  children: ReactNode;
+  apiKey: string;
+  apiUrl?: string;
+  environment?: string;
+  debug?: boolean;
+}
+
+export const ReviProvider: React.FC<ReviProviderProps> = ({
+  children,
+  apiKey,
+  apiUrl = 'https://your-revi-backend.com',
+  environment = process.env.NODE_ENV,
+  debug = process.env.NODE_ENV === 'development',
+}) => {
+  const [monitor, setMonitor] = React.useState<Monitor | null>(null);
+
+  useEffect(() => {
+    const reviMonitor = new Monitor({
+      apiKey,
+      apiUrl,
+      environment,
+      debug,
+      sampleRate: 1.0,
+      sessionSampleRate: environment === 'production' ? 0.1 : 1.0,
+      privacy: {
+        maskInputs: true,
+        maskPasswords: true,
+        maskCreditCards: true,
+      },
+      performance: {
+        captureWebVitals: true,
+        captureNavigationTiming: true,
+      },
+      replay: {
+        enabled: true,
+        maskAllInputs: false,
+        maskAllText: false,
+      },
+    });
+
+    // Start monitoring
+    reviMonitor.start();
+    
+    // Set up React-specific error capture
+    const originalErrorHandler = console.error;
+    console.error = (...args) => {
+      // Capture React errors from console.error
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('React')) {
+        reviMonitor.captureException(new Error(args.join(' ')), {
+          tags: { source: 'react-console' },
+        });
+      }
+      originalErrorHandler(...args);
+    };
+
+    setMonitor(reviMonitor);
+
+    // Development debugging
+    if (debug) {
+      (window as any).Revi = reviMonitor;
+    }
+
+    return () => {
+      console.error = originalErrorHandler;
+    };
+  }, [apiKey, apiUrl, environment, debug]);
+
+  const captureError = (error: Error, context?: Record<string, any>) => {
+    if (monitor) {
+      monitor.captureException(error, {
+        tags: { source: 'react-manual' },
+        extra: context,
+      });
+    }
+  };
+
+  const setUser = (user: { id: string; email?: string; name?: string }) => {
+    if (monitor) {
+      monitor.setUser(user);
+    }
+  };
+
+  const addBreadcrumb = (message: string, data?: Record<string, any>) => {
+    if (monitor) {
+      monitor.addBreadcrumb(message, data);
+    }
+  };
+
+  return (
+    <ReviContext.Provider value={{ monitor, captureError, setUser, addBreadcrumb }}>
+      {children}
+    </ReviContext.Provider>
+  );
+};
+```
+
+### 3. Wrap Your App
+
+Update your `src/App.tsx` or `src/index.tsx`:
+
+```tsx
+// src/App.tsx
+import React from 'react';
+import { ReviProvider } from './providers/ReviProvider';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import YourMainComponent from './YourMainComponent';
+
+function App() {
+  return (
+    <ReviProvider 
+      apiKey={process.env.REACT_APP_REVI_API_KEY!}
+      apiUrl={process.env.REACT_APP_REVI_API_URL}
+      environment={process.env.NODE_ENV}
+    >
+      <ErrorBoundary>
+        <YourMainComponent />
+      </ErrorBoundary>
+    </ReviProvider>
+  );
+}
+
+export default App;
+```
+
+### 4. Environment Variables
+
+Add to your `.env` file:
+
+```env
+REACT_APP_REVI_API_KEY=revi_your_api_key_here
+REACT_APP_REVI_API_URL=https://your-revi-backend.com
+```
+
+## Error Boundary Integration
+
+Create `src/components/ErrorBoundary.tsx`:
+
+```tsx
+import React, { Component, ReactNode } from 'react';
+import { Monitor } from 'revi-monitor';
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+  errorInfo?: React.ErrorInfo;
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: (error: Error, errorInfo: React.ErrorInfo, resetError: () => void) => ReactNode;
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  monitor?: Monitor;
+}
+
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return {
+      hasError: true,
+      error,
+    };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Report to Revi
+    if (this.props.monitor) {
+      this.props.monitor.captureException(error, {
+        tags: {
+          source: 'react-error-boundary',
+          component: errorInfo.componentStack,
+        },
+        extra: {
+          componentStack: errorInfo.componentStack,
+          errorBoundary: true,
+        },
+      });
+    }
+
+    // Call custom error handler
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
+
+    this.setState({
+      error,
+      errorInfo,
+    });
+  }
+
+  resetError = () => {
+    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+  };
+
+  render() {
+    if (this.state.hasError && this.state.error && this.state.errorInfo) {
+      // Custom fallback UI
+      if (this.props.fallback) {
+        return this.props.fallback(this.state.error, this.state.errorInfo, this.resetError);
+      }
+
+      // Default fallback UI
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Something went wrong
+            </h2>
+            <p className="text-gray-600 text-center mb-6">
+              We've been notified about this error and will fix it soon.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={this.resetError}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Try again
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Reload page
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// HOC version for functional components
+export const withErrorBoundary = <P extends object>(
+  Component: React.ComponentType<P>,
+  errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>
+) => {
+  return (props: P) => (
+    <ErrorBoundary {...errorBoundaryProps}>
+      <Component {...props} />
+    </ErrorBoundary>
+  );
+};
+```
+
+## Hooks Integration
+
+Create custom hooks for common Revi operations:
+
+### useReviError Hook
+
+```tsx
+// src/hooks/useReviError.ts
+import { useCallback } from 'react';
+import { useRevi } from '../providers/ReviProvider';
+
+export const useReviError = () => {
+  const { captureError, addBreadcrumb } = useRevi();
+
+  const captureAsyncError = useCallback(async (asyncFn: () => Promise<any>, context?: Record<string, any>) => {
+    try {
+      return await asyncFn();
+    } catch (error) {
+      captureError(error as Error, {
+        ...context,
+        type: 'async-error',
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
+  }, [captureError]);
+
+  const captureUserAction = useCallback((action: string, data?: Record<string, any>) => {
+    addBreadcrumb(`User ${action}`, {
+      category: 'user-action',
+      ...data,
+    });
+  }, [addBreadcrumb]);
+
+  return {
+    captureError,
+    captureAsyncError,
+    captureUserAction,
+  };
+};
+```
+
+### useReviUser Hook
+
+```tsx
+// src/hooks/useReviUser.ts
+import { useEffect } from 'react';
+import { useRevi } from '../providers/ReviProvider';
+
+interface User {
+  id: string;
+  email?: string;
+  name?: string;
+  role?: string;
+}
+
+export const useReviUser = (user: User | null) => {
+  const { setUser, addBreadcrumb } = useRevi();
+
+  useEffect(() => {
+    if (user) {
+      setUser({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      });
+
+      addBreadcrumb('User logged in', {
+        userId: user.id,
+        userRole: user.role,
+      });
+    }
+  }, [user, setUser, addBreadcrumb]);
+
+  return {
+    setUser,
+  };
+};
+```
+
+### useReviNavigation Hook
+
+```tsx
+// src/hooks/useReviNavigation.ts
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom'; // or your routing library
+import { useRevi } from '../providers/ReviProvider';
+
+export const useReviNavigation = () => {
+  const location = useLocation();
+  const { addBreadcrumb } = useRevi();
+
+  useEffect(() => {
+    addBreadcrumb(`Navigation to ${location.pathname}`, {
+      category: 'navigation',
+      pathname: location.pathname,
+      search: location.search,
+    });
+  }, [location, addBreadcrumb]);
+
+  return {
+    addBreadcrumb,
+  };
+};
+```
+
+## Advanced Usage Examples
+
+### 1. API Error Handling
+
+```tsx
+// src/services/apiService.ts
+import { useReviError } from '../hooks/useReviError';
+
+export const useApiService = () => {
+  const { captureAsyncError, captureUserAction } = useReviError();
+
+  const fetchData = async (endpoint: string) => {
+    captureUserAction('API request started', { endpoint });
+    
+    return captureAsyncError(
+      async () => {
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+        return response.json();
+      },
+      {
+        endpoint,
+        method: 'GET',
+      }
+    );
+  };
+
+  const submitForm = async (data: any, endpoint: string) => {
+    captureUserAction('Form submission started', { endpoint });
+    
+    return captureAsyncError(
+      async () => {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Form submission failed: ${response.status}`);
+        }
+        
+        return response.json();
+      },
+      {
+        endpoint,
+        method: 'POST',
+        formData: Object.keys(data), // Don't send actual form data for privacy
+      }
+    );
+  };
+
+  return { fetchData, submitForm };
+};
+```
+
+### 2. React Query Integration
+
+```tsx
+// src/hooks/useReviQuery.ts
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useReviError } from './useReviError';
+
+export const useReviQuery = (key: string, queryFn: () => Promise<any>) => {
+  const { captureError } = useReviError();
+
+  return useQuery({
+    queryKey: [key],
+    queryFn,
+    onError: (error) => {
+      captureError(error as Error, {
+        queryKey: key,
+        source: 'react-query',
+      });
+    },
+  });
+};
+
+export const useReviMutation = (mutationFn: (variables: any) => Promise<any>) => {
+  const { captureError, captureUserAction } = useReviError();
+
+  return useMutation({
+    mutationFn,
+    onMutate: (variables) => {
+      captureUserAction('Mutation started', { variables: Object.keys(variables) });
+    },
+    onError: (error, variables) => {
+      captureError(error as Error, {
+        variables: Object.keys(variables),
+        source: 'react-query-mutation',
+      });
+    },
+  });
+};
+```
+
+### 3. Form Validation with Revi
+
+```tsx
+// src/components/ReviForm.tsx
+import React, { useState } from 'react';
+import { useReviError } from '../hooks/useReviError';
+
+interface FormData {
+  email: string;
+  password: string;
+}
+
+export const ReviForm: React.FC = () => {
+  const [formData, setFormData] = useState<FormData>({ email: '', password: '' });
+  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const { captureError, captureUserAction } = useReviError();
+
+  const validateForm = (data: FormData): Partial<FormData> => {
+    const newErrors: Partial<FormData> = {};
+    
+    if (!data.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(data.email)) {
+      newErrors.email = 'Email is invalid';
+    }
+    
+    if (!data.password || data.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    
+    return newErrors;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    captureUserAction('Form submission attempt');
+    
+    const validationErrors = validateForm(formData);
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      captureError(new Error('Form validation failed'), {
+        validationErrors: Object.keys(validationErrors),
+        formFields: Object.keys(formData),
+      });
+      return;
+    }
+
+    try {
+      // Submit form
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Login failed: ${response.status}`);
+      }
+
+      captureUserAction('Login successful');
+    } catch (error) {
+      captureError(error as Error, {
+        context: 'login-form',
+        email: formData.email, // Safe to log email for debugging
+      });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+          placeholder="Email"
+          className="w-full p-2 border rounded"
+        />
+        {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+      </div>
+      
+      <div>
+        <input
+          type="password"
+          value={formData.password}
+          onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+          placeholder="Password"
+          className="w-full p-2 border rounded"
+        />
+        {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
+      </div>
+      
+      <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded">
+        Login
+      </button>
+    </form>
+  );
+};
+```
+
+## Testing Your Integration
+
+### 1. Test Error Capture
+
+```tsx
+// src/components/TestRevi.tsx
+import React from 'react';
+import { useReviError } from '../hooks/useReviError';
+
+export const TestRevi: React.FC = () => {
+  const { captureError, captureAsyncError, captureUserAction } = useReviError();
+
+  const triggerSyncError = () => {
+    captureUserAction('Test sync error triggered');
+    captureError(new Error('Test synchronous error from React'), {
+      testType: 'sync',
+      component: 'TestRevi',
+    });
+  };
+
+  const triggerAsyncError = async () => {
+    captureUserAction('Test async error triggered');
+    await captureAsyncError(
+      async () => {
+        throw new Error('Test asynchronous error from React');
+      },
+      {
+        testType: 'async',
+        component: 'TestRevi',
+      }
+    );
+  };
+
+  const triggerBoundaryError = () => {
+    captureUserAction('Test boundary error triggered');
+    throw new Error('Test error boundary error from React');
+  };
+
+  return (
+    <div className="p-4 space-y-4 border rounded">
+      <h3 className="font-bold">Test Revi Integration</h3>
+      <div className="space-x-2">
+        <button
+          onClick={triggerSyncError}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          Test Sync Error
+        </button>
+        <button
+          onClick={triggerAsyncError}
+          className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+        >
+          Test Async Error
+        </button>
+        <button
+          onClick={triggerBoundaryError}
+          className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+        >
+          Test Error Boundary
+        </button>
+      </div>
+    </div>
+  );
+};
+```
+
+### 2. Development Tools
+
+```tsx
+// src/components/ReviDevTools.tsx (only in development)
+import React from 'react';
+import { useRevi } from '../providers/ReviProvider';
+
+export const ReviDevTools: React.FC = () => {
+  const { monitor } = useRevi();
+
+  if (process.env.NODE_ENV !== 'development' || !monitor) {
+    return null;
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 bg-black text-white p-2 rounded text-xs">
+      <div>Revi Monitor: ✅ Active</div>
+      <div>Session ID: {(monitor as any).sessionId?.slice(0, 8)}...</div>
+      <button
+        onClick={() => console.log('Revi Monitor:', monitor)}
+        className="mt-1 text-blue-300 hover:text-blue-100"
+      >
+        Log to Console
+      </button>
+    </div>
+  );
+};
+```
+
+## TypeScript Configuration
+
+Add to your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "types": ["revi-monitor"]
+  }
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Provider context errors:**
+- Ensure ReviProvider wraps your entire app
+- Check that useRevi is called within ReviProvider
+
+**Environment variable issues:**
+- Variables must be prefixed with `REACT_APP_`
+- Restart development server after changing .env
+
+**Build errors:**
+- Ensure revi-monitor is properly installed
+- Check TypeScript types are included
+
+## Next Steps
+
+- [Configure Error Grouping](/docs/errors/grouping)
+- [Set Up Session Replay](/docs/replay/setup)
+- [Monitor Performance](/docs/performance/web-vitals)

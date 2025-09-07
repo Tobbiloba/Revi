@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { useRealTimeErrors } from '@/lib/hooks/useRealTimeErrors';
 
 export default function Dashboard() {
-  const [selectedProjectId, setSelectedProjectId] = useState<number>(1);
+  const [selectedProjectId] = useState<number>(1);
 
   // Get real-time errors for the interactive timeline
   const { errors, isConnected } = useRealTimeErrors({

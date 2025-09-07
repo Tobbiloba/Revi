@@ -1,0 +1,938 @@
+---
+title: 'Svelte Integration'
+description: 'Complete guide to integrating Revi error monitoring and session replay in your Svelte application with stores and error handling.'
+date: 2025-09-07
+---
+
+# Svelte Integration
+
+Integrate Revi seamlessly into your Svelte application for comprehensive error monitoring and session replay. This guide covers SvelteKit and standard Svelte applications.
+
+## Quick Setup
+
+### 1. Install Revi SDK
+
+```bash
+npm install revi-monitor
+```
+
+### 2. Create Revi Store
+
+Create `src/lib/stores/revi.js`:
+
+```javascript
+// src/lib/stores/revi.js
+import { writable, derived } from 'svelte/store';
+import { browser } from '$app/environment'; // SvelteKit only
+import { Monitor } from 'revi-monitor';
+
+// Create writable stores for Revi state
+export const reviMonitor = writable(null);
+export const reviReady = writable(false);
+export const reviError = writable(null);
+
+// Derived store to check if Revi is available
+export const isReviAvailable = derived(
+  [reviMonitor, reviReady],
+  ([$reviMonitor, $reviReady]) => $reviMonitor !== null && $reviReady
+);
+
+// Configuration
+const REVI_CONFIG = {
+  apiKey: import.meta.env.VITE_REVI_API_KEY || process.env.VITE_REVI_API_KEY,
+  apiUrl: import.meta.env.VITE_REVI_API_URL || process.env.VITE_REVI_API_URL || 'https://your-revi-backend.com',
+  environment: import.meta.env.MODE || process.env.NODE_ENV || 'development',
+  debug: (import.meta.env.MODE || process.env.NODE_ENV) === 'development',
+};
+
+// Initialize Revi (only in browser)
+export function initializeRevi() {
+  // Only initialize in browser environment
+  if (!browser && typeof window === 'undefined') {
+    console.warn('Revi: Not initializing in SSR environment');
+    return;
+  }
+
+  if (!REVI_CONFIG.apiKey) {
+    console.warn('Revi: API key not found in environment variables');
+    reviError.set(new Error('Missing API key'));
+    return;
+  }
+
+  try {
+    const monitor = new Monitor({
+      apiKey: REVI_CONFIG.apiKey,
+      apiUrl: REVI_CONFIG.apiUrl,
+      environment: REVI_CONFIG.environment,
+      debug: REVI_CONFIG.debug,
+      sampleRate: 1.0,
+      sessionSampleRate: REVI_CONFIG.environment === 'production' ? 0.1 : 1.0,
+      privacy: {
+        maskInputs: true,
+        maskPasswords: true,
+        maskCreditCards: true,
+      },
+      performance: {
+        captureWebVitals: true,
+        captureNavigationTiming: true,
+      },
+      replay: {
+        enabled: true,
+        maskAllInputs: false,
+        maskAllText: false,
+      },
+    });
+
+    // Start monitoring
+    monitor.start();
+
+    // Set up global error handler
+    const originalOnError = window.onerror;
+    window.onerror = (message, source, lineno, colno, error) => {
+      if (error) {
+        monitor.captureException(error, {
+          tags: {
+            source: 'window-onerror',
+          },
+          extra: {
+            message,
+            source,
+            lineno,
+            colno,
+          },
+        });
+      }
+      
+      // Call original handler
+      if (originalOnError) {
+        originalOnError(message, source, lineno, colno, error);
+      }
+    };
+
+    // Set up unhandled promise rejection handler
+    const originalOnUnhandledRejection = window.onunhandledrejection;
+    window.onunhandledrejection = (event) => {
+      monitor.captureException(event.reason, {
+        tags: {
+          source: 'unhandled-promise-rejection',
+        },
+        extra: {
+          promise: event.promise,
+        },
+      });
+      
+      if (originalOnUnhandledRejection) {
+        originalOnUnhandledRejection(event);
+      }
+    };
+
+    // Update stores
+    reviMonitor.set(monitor);
+    reviReady.set(true);
+
+    // Development debugging
+    if (REVI_CONFIG.debug) {
+      window.Revi = monitor;
+      console.log('Revi initialized in debug mode');
+    }
+
+  } catch (error) {
+    console.error('Failed to initialize Revi:', error);
+    reviError.set(error);
+  }
+}
+
+// Helper functions
+export function captureException(error, context = {}) {
+  const monitor = get(reviMonitor);
+  if (monitor) {
+    monitor.captureException(error, {
+      tags: { source: 'svelte-manual' },
+      extra: context,
+    });
+  }
+}
+
+export async function captureAsyncError(asyncFn, context = {}) {
+  try {
+    return await asyncFn();
+  } catch (error) {
+    captureException(error, {
+      ...context,
+      type: 'async-error',
+      timestamp: new Date().toISOString(),
+    });
+    throw error;
+  }
+}
+
+export function addBreadcrumb(message, data = {}) {
+  const monitor = get(reviMonitor);
+  if (monitor) {
+    monitor.addBreadcrumb(message, {
+      category: 'svelte-breadcrumb',
+      ...data,
+    });
+  }
+}
+
+export function setUser(user) {
+  const monitor = get(reviMonitor);
+  if (monitor) {
+    monitor.setUser({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    });
+  }
+}
+
+export function setContext(key, value) {
+  const monitor = get(reviMonitor);
+  if (monitor) {
+    monitor.setContext(key, value);
+  }
+}
+
+// Import get function for helper functions
+import { get } from 'svelte/store';
+```
+
+### 3. Initialize in Your App
+
+#### SvelteKit (app.html)
+
+```html
+<!-- src/app.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width" />
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>
+```
+
+Create `src/hooks.client.js`:
+
+```javascript
+// src/hooks.client.js
+import { initializeRevi } from '$lib/stores/revi';
+
+// Initialize Revi when the app starts on the client
+initializeRevi();
+```
+
+#### Standard Svelte (main.js)
+
+```javascript
+// src/main.js
+import App from './App.svelte';
+import { initializeRevi } from './lib/stores/revi';
+
+// Initialize Revi
+initializeRevi();
+
+const app = new App({
+  target: document.getElementById('app')
+});
+
+export default app;
+```
+
+### 4. Environment Variables
+
+Add to your `.env` file:
+
+```env
+VITE_REVI_API_KEY=revi_your_api_key_here
+VITE_REVI_API_URL=https://your-revi-backend.com
+```
+
+## Component Usage Examples
+
+### Basic Error Handling Component
+
+```svelte
+<!-- src/lib/components/ErrorTest.svelte -->
+<script>
+  import { captureException, captureAsyncError, addBreadcrumb, isReviAvailable } from '$lib/stores/revi';
+  import { onMount } from 'svelte';
+
+  onMount(() => {
+    addBreadcrumb('ErrorTest component mounted');
+  });
+
+  function triggerSyncError() {
+    try {
+      throw new Error('Test synchronous error from Svelte');
+    } catch (error) {
+      captureException(error, {
+        component: 'ErrorTest',
+        method: 'triggerSyncError',
+      });
+    }
+  }
+
+  async function triggerAsyncError() {
+    await captureAsyncError(
+      async () => {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        throw new Error('Test asynchronous error from Svelte');
+      },
+      {
+        component: 'ErrorTest',
+        method: 'triggerAsyncError',
+      }
+    );
+  }
+
+  function triggerUncaughtError() {
+    // This will be caught by the global error handler
+    setTimeout(() => {
+      throw new Error('Test uncaught error from Svelte');
+    }, 100);
+  }
+
+  function trackUserAction() {
+    addBreadcrumb('User clicked track action button', {
+      component: 'ErrorTest',
+      action: 'track-action',
+    });
+  }
+</script>
+
+<div class="error-test">
+  <h3>Test Revi Integration</h3>
+  
+  <div class="button-group">
+    <button on:click={triggerSyncError} class="btn btn-red">
+      Sync Error
+    </button>
+    <button on:click={triggerAsyncError} class="btn btn-orange">
+      Async Error
+    </button>
+    <button on:click={triggerUncaughtError} class="btn btn-purple">
+      Uncaught Error
+    </button>
+    <button on:click={trackUserAction} class="btn btn-blue">
+      Track Action
+    </button>
+  </div>
+
+  {#if $isReviAvailable}
+    <div class="status">✅ Revi is active</div>
+  {:else}
+    <div class="status error">❌ Revi not initialized</div>
+  {/if}
+</div>
+
+<style>
+  .error-test {
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin: 1rem 0;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+
+  .btn-red { background-color: #ef4444; }
+  .btn-orange { background-color: #f97316; }
+  .btn-purple { background-color: #8b5cf6; }
+  .btn-blue { background-color: #3b82f6; }
+
+  .btn:hover {
+    opacity: 0.9;
+  }
+
+  .status {
+    margin-top: 1rem;
+    font-weight: bold;
+  }
+
+  .status:not(.error) {
+    color: #10b981;
+  }
+
+  .status.error {
+    color: #ef4444;
+  }
+</style>
+```
+
+### Form Component with Validation
+
+```svelte
+<!-- src/lib/components/ContactForm.svelte -->
+<script>
+  import { captureException, captureAsyncError, addBreadcrumb } from '$lib/stores/revi';
+
+  let email = '';
+  let message = '';
+  let errors = {};
+  let isSubmitting = false;
+
+  function validateForm() {
+    errors = {};
+    
+    if (!email) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = 'Email is invalid';
+    }
+    
+    if (!message) {
+      errors.message = 'Message is required';
+    }
+    
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleSubmit() {
+    addBreadcrumb('Form submission started');
+
+    if (!validateForm()) {
+      captureException(new Error('Form validation failed'), {
+        component: 'ContactForm',
+        validationErrors: Object.keys(errors),
+      });
+      return;
+    }
+
+    isSubmitting = true;
+
+    try {
+      await captureAsyncError(
+        async () => {
+          const response = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, message }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Form submission failed: ${response.status}`);
+          }
+
+          return response.json();
+        },
+        {
+          component: 'ContactForm',
+          formFields: ['email', 'message'], // Don't send actual form data
+        }
+      );
+
+      addBreadcrumb('Form submitted successfully');
+      
+      // Reset form
+      email = '';
+      message = '';
+      errors = {};
+      
+    } catch (error) {
+      // Error already captured by captureAsyncError
+      console.error('Form submission failed:', error);
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  // Track form interactions
+  function trackFieldChange(fieldName) {
+    addBreadcrumb(`Form field changed: ${fieldName}`, {
+      component: 'ContactForm',
+      field: fieldName,
+    });
+  }
+</script>
+
+<form on:submit|preventDefault={handleSubmit}>
+  <div class="form-group">
+    <label for="email">Email</label>
+    <input
+      id="email"
+      type="email"
+      bind:value={email}
+      on:input={() => trackFieldChange('email')}
+      class:error={errors.email}
+      placeholder="Your email address"
+    />
+    {#if errors.email}
+      <div class="error-message">{errors.email}</div>
+    {/if}
+  </div>
+
+  <div class="form-group">
+    <label for="message">Message</label>
+    <textarea
+      id="message"
+      bind:value={message}
+      on:input={() => trackFieldChange('message')}
+      class:error={errors.message}
+      placeholder="Your message"
+      rows="4"
+    ></textarea>
+    {#if errors.message}
+      <div class="error-message">{errors.message}</div>
+    {/if}
+  </div>
+
+  <button type="submit" disabled={isSubmitting}>
+    {isSubmitting ? 'Submitting...' : 'Submit'}
+  </button>
+</form>
+
+<style>
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  input, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
+
+  input.error, textarea.error {
+    border-color: #ef4444;
+  }
+
+  .error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  button {
+    background-color: #3b82f6;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  button:hover:not(:disabled) {
+    background-color: #2563eb;
+  }
+
+  button:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
+</style>
+```
+
+## SvelteKit Specific Features
+
+### Page Load Error Handling
+
+Create `src/hooks.server.js`:
+
+```javascript
+// src/hooks.server.js
+import { captureException } from '$lib/stores/revi';
+
+export async function handleError({ error, event }) {
+  // This only runs on the server, so we need to handle errors differently
+  console.error('SvelteKit server error:', error);
+  
+  // You could send the error to your logging service here
+  // For Revi, you'll want to capture client-side errors primarily
+  
+  return {
+    message: 'An error occurred',
+    code: error?.code ?? 'UNKNOWN'
+  };
+}
+```
+
+### Layout with Error Boundary
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script>
+  import { page } from '$app/stores';
+  import { addBreadcrumb, setContext } from '$lib/stores/revi';
+  import { onMount } from 'svelte';
+
+  // Track page navigation
+  $: if ($page.url) {
+    addBreadcrumb(`Navigation to ${$page.url.pathname}`, {
+      category: 'navigation',
+      pathname: $page.url.pathname,
+      search: $page.url.search,
+    });
+
+    setContext('page', {
+      pathname: $page.url.pathname,
+      search: $page.url.search,
+      params: $page.params,
+    });
+  }
+
+  onMount(() => {
+    addBreadcrumb('App layout mounted');
+  });
+</script>
+
+<main>
+  <nav>
+    <!-- Your navigation -->
+  </nav>
+  
+  <div class="content">
+    <slot />
+  </div>
+</main>
+
+<style>
+  main {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .content {
+    flex: 1;
+    padding: 1rem;
+  }
+</style>
+```
+
+### API Route Error Handling
+
+```javascript
+// src/routes/api/example/+server.js
+import { json, error } from '@sveltejs/kit';
+import { captureException } from '$lib/stores/revi';
+
+export async function POST({ request }) {
+  try {
+    const data = await request.json();
+    
+    // Your API logic here
+    const result = await processData(data);
+    
+    return json(result);
+  } catch (err) {
+    // For server-side errors, you might want to use a different error tracking service
+    // or send the error to your logging service
+    console.error('API error:', err);
+    
+    throw error(500, {
+      message: 'Internal server error'
+    });
+  }
+}
+
+async function processData(data) {
+  // Simulate processing that might throw an error
+  if (!data.required_field) {
+    throw new Error('Missing required field');
+  }
+  
+  return { success: true, data };
+}
+```
+
+## Store Integration
+
+### Custom Store with Error Handling
+
+```javascript
+// src/lib/stores/api.js
+import { writable, derived } from 'svelte/store';
+import { captureException, captureAsyncError, addBreadcrumb } from './revi';
+
+function createApiStore() {
+  const { subscribe, set, update } = writable({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  return {
+    subscribe,
+    async fetchData(endpoint) {
+      update(state => ({ ...state, loading: true, error: null }));
+      
+      addBreadcrumb(`Fetching data from ${endpoint}`);
+
+      try {
+        const data = await captureAsyncError(
+          async () => {
+            const response = await fetch(endpoint);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+          },
+          {
+            store: 'apiStore',
+            endpoint,
+          }
+        );
+
+        update(state => ({ ...state, data, loading: false }));
+        addBreadcrumb(`Data fetched successfully from ${endpoint}`);
+        
+      } catch (error) {
+        update(state => ({ 
+          ...state, 
+          error: error.message, 
+          loading: false 
+        }));
+      }
+    },
+    
+    reset() {
+      set({ data: null, loading: false, error: null });
+    }
+  };
+}
+
+export const apiStore = createApiStore();
+```
+
+### User Authentication Store
+
+```javascript
+// src/lib/stores/auth.js
+import { writable } from 'svelte/store';
+import { setUser, addBreadcrumb, captureAsyncError } from './revi';
+
+function createAuthStore() {
+  const { subscribe, set, update } = writable({
+    user: null,
+    loading: false,
+    error: null,
+  });
+
+  return {
+    subscribe,
+    
+    async login(credentials) {
+      update(state => ({ ...state, loading: true, error: null }));
+      
+      try {
+        const user = await captureAsyncError(
+          async () => {
+            const response = await fetch('/api/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(credentials),
+            });
+
+            if (!response.ok) {
+              throw new Error('Login failed');
+            }
+
+            return response.json();
+          },
+          {
+            store: 'authStore',
+            method: 'login',
+          }
+        );
+
+        // Set user context in Revi
+        setUser({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        });
+
+        addBreadcrumb('User logged in', {
+          userId: user.id,
+          role: user.role,
+        });
+
+        update(state => ({ ...state, user, loading: false }));
+        
+      } catch (error) {
+        update(state => ({ 
+          ...state, 
+          error: error.message, 
+          loading: false 
+        }));
+      }
+    },
+
+    logout() {
+      addBreadcrumb('User logged out');
+      setUser({ id: 'anonymous' });
+      set({ user: null, loading: false, error: null });
+    },
+  };
+}
+
+export const authStore = createAuthStore();
+```
+
+## Development Tools
+
+### Debug Component
+
+```svelte
+<!-- src/lib/components/ReviDebug.svelte -->
+<script>
+  import { reviMonitor, reviReady, reviError } from '$lib/stores/revi';
+
+  let showDebug = false;
+  
+  $: monitor = $reviMonitor;
+  $: ready = $reviReady;
+  $: error = $reviError;
+
+  function toggleDebug() {
+    showDebug = !showDebug;
+  }
+</script>
+
+{#if import.meta.env.DEV}
+  <div class="revi-debug">
+    <button on:click={toggleDebug} class="debug-toggle">
+      Revi Debug {showDebug ? '−' : '+'}
+    </button>
+    
+    {#if showDebug}
+      <div class="debug-panel">
+        <div class="debug-item">
+          <strong>Status:</strong> 
+          {#if ready}
+            <span class="status-good">✅ Ready</span>
+          {:else if error}
+            <span class="status-error">❌ Error: {error.message}</span>
+          {:else}
+            <span class="status-loading">⏳ Loading</span>
+          {/if}
+        </div>
+        
+        {#if monitor}
+          <div class="debug-item">
+            <strong>Session ID:</strong>
+            <code>{monitor.sessionId?.slice(0, 8)}...</code>
+          </div>
+          
+          <button 
+            on:click={() => console.log('Revi Monitor:', monitor)}
+            class="debug-button"
+          >
+            Log Monitor to Console
+          </button>
+        {/if}
+      </div>
+    {/if}
+  </div>
+{/if}
+
+<style>
+  .revi-debug {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9999;
+  }
+
+  .debug-toggle {
+    background: #1f2937;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .debug-panel {
+    background: #1f2937;
+    color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-top: 0.5rem;
+    min-width: 200px;
+    font-size: 0.75rem;
+  }
+
+  .debug-item {
+    margin-bottom: 0.5rem;
+  }
+
+  .debug-button {
+    background: #374151;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .status-good { color: #10b981; }
+  .status-error { color: #ef4444; }
+  .status-loading { color: #f59e0b; }
+
+  code {
+    background: #374151;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.125rem;
+  }
+</style>
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**SSR/Hydration errors:**
+- Ensure Revi is only initialized on the client side
+- Check browser environment detection
+
+**Environment variables not loading:**
+- Variables must be prefixed with `VITE_`
+- Restart development server after changing .env
+
+**Store subscription errors:**
+- Make sure stores are imported correctly
+- Check that initialization happens before usage
+
+## Next Steps
+
+- [Configure Error Grouping](/docs/errors/grouping)
+- [Set Up Session Replay](/docs/replay/setup)
+- [Monitor Performance](/docs/performance/web-vitals)

@@ -257,7 +257,7 @@ export function CinematicReplayControls({
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isPlaying, currentTime, isFullscreen]);
+  }, [isPlaying, currentTime, isFullscreen, onPause, onPlay, onFullscreenToggle, onMuteToggle, skip10Backward, skip10Forward, skipToNextEvent, skipToPrevEvent]);
 
   return (
     <div 

@@ -1,0 +1,268 @@
+Revi - Error Monitoring and Session Replay Platform
+Copyright 2024 Revi Team
+
+This product includes software developed by the Revi Team and the open source community.
+
+================================================================================
+THIRD PARTY NOTICES
+================================================================================
+
+This software contains components from the projects listed below. The original 
+copyright notices and the licenses under which we received such components are 
+set forth below for informational purposes.
+
+================================================================================
+Core Dependencies
+================================================================================
+
+Encore.ts
+Copyright (c) Encore Platform Inc.
+Licensed under the MIT License
+https://encore.dev
+
+Next.js
+Copyright (c) Vercel, Inc.
+Licensed under the MIT License
+https://nextjs.org
+
+React
+Copyright (c) Facebook, Inc. and its affiliates.
+Licensed under the MIT License
+https://react.dev
+
+TypeScript
+Copyright (c) Microsoft Corporation.
+Licensed under the Apache License 2.0
+https://www.typescriptlang.org
+
+PostgreSQL
+Copyright (c) 1996-2024, The PostgreSQL Global Development Group
+Licensed under the PostgreSQL License
+https://www.postgresql.org
+
+Redis
+Copyright (c) 2009-2024 Redis Ltd.
+Licensed under the BSD 3-Clause License
+https://redis.io
+
+================================================================================
+UI and Styling
+================================================================================
+
+Tailwind CSS
+Copyright (c) Tailwind Labs, Inc.
+Licensed under the MIT License
+https://tailwindcss.com
+
+Radix UI
+Copyright (c) WorkOS
+Licensed under the MIT License
+https://radix-ui.com
+
+Lucide React
+Copyright (c) Lucide Contributors
+Licensed under the ISC License
+https://lucide.dev
+
+Framer Motion
+Copyright (c) Framer B.V.
+Licensed under the MIT License
+https://www.framer.com/motion
+
+================================================================================
+Development and Build Tools
+================================================================================
+
+Rollup
+Copyright (c) 2017 [these people](https://github.com/rollup/rollup/graphs/contributors)
+Licensed under the MIT License
+https://rollupjs.org
+
+Vite
+Copyright (c) 2019-present, Yuxi (Evan) You and Vite contributors
+Licensed under the MIT License
+https://vitejs.dev
+
+Vitest
+Copyright (c) 2021-present Anthony Fu
+Licensed under the MIT License
+https://vitest.dev
+
+ESLint
+Copyright OpenJS Foundation and other contributors, www.openjsf.org
+Licensed under the MIT License
+https://eslint.org
+
+Prettier
+Copyright (c) James Long and contributors
+Licensed under the MIT License
+https://prettier.io
+
+================================================================================
+Data and Analytics
+================================================================================
+
+Recharts
+Copyright (c) 2015-present Recharts Group
+Licensed under the MIT License
+https://recharts.org
+
+D3.js
+Copyright (c) 2010-2021, Michael Bostock
+Licensed under the BSD 3-Clause License
+https://d3js.org
+
+Date-fns
+Copyright (c) 2021 Sasha Koss and Lesha Koss https://kossnocorp.mit-license.org
+Licensed under the MIT License
+https://date-fns.org
+
+================================================================================
+Authentication and Security
+================================================================================
+
+Better Auth
+Copyright (c) Better Auth Contributors
+Licensed under the MIT License
+https://github.com/better-auth/better-auth
+
+bcryptjs
+Copyright (c) 2013 Daniel Wirtz
+Licensed under the Apache License 2.0
+https://github.com/dcodeIO/bcrypt.js
+
+jsonwebtoken
+Copyright (c) 2010 Auth0, Inc.
+Licensed under the MIT License
+https://github.com/auth0/node-jsonwebtoken
+
+================================================================================
+Database and ORM
+================================================================================
+
+Drizzle ORM
+Copyright (c) Drizzle Team
+Licensed under the Apache License 2.0
+https://orm.drizzle.team
+
+pg (node-postgres)
+Copyright (c) 2010-2020 Brian Carlson
+Licensed under the MIT License
+https://github.com/brianc/node-postgres
+
+================================================================================
+Utilities and Helpers
+================================================================================
+
+Zod
+Copyright (c) 2020 Colin McDonnell
+Licensed under the MIT License
+https://zod.dev
+
+clsx
+Copyright (c) Luke Edwards
+Licensed under the MIT License
+https://github.com/lukeed/clsx
+
+class-variance-authority
+Copyright (c) Joe Bell
+Licensed under the Apache License 2.0
+https://cva.style
+
+tailwind-merge
+Copyright (c) Dany Castillo
+Licensed under the MIT License
+https://github.com/dcastil/tailwind-merge
+
+================================================================================
+Development Dependencies
+================================================================================
+
+@types/node
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License
+https://github.com/DefinitelyTyped/DefinitelyTyped
+
+@types/react
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License
+https://github.com/DefinitelyTyped/DefinitelyTyped
+
+================================================================================
+Icons and Assets
+================================================================================
+
+Tabler Icons
+Copyright (c) 2020-2024 Paweł Kuna
+Licensed under the MIT License
+https://tabler-icons.io
+
+================================================================================
+License Information
+================================================================================
+
+MIT License
+-----------
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Apache License 2.0
+------------------
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+BSD 3-Clause License
+--------------------
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+================================================================================
+Additional Information
+================================================================================
+
+This NOTICE file is included as required by the Apache License 2.0 and other
+licenses. For the most up-to-date dependency information, please check:
+
+- package.json files in each workspace
+- GitHub repository: https://github.com/Tobbiloba/Revi
+- Documentation: https://revi-five.vercel.app/docs
+
+For questions about licensing or to report license compliance issues, please
+contact: legal@revi.dev
+
+Last updated: September 7, 2024

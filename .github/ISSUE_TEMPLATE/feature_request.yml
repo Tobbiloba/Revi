@@ -1,0 +1,155 @@
+name: 💡 Feature Request
+description: Suggest a new feature or enhancement for Revi
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your feature suggestion! We're always looking to improve Revi.
+
+  - type: checkboxes
+    id: existing-requests
+    attributes:
+      label: Prerequisites
+      description: Please confirm before submitting
+      options:
+        - label: I have searched existing issues and discussions to make sure this feature hasn't already been requested
+          required: true
+        - label: I have checked the roadmap to see if this feature is already planned
+          required: true
+
+  - type: textarea
+    id: feature-summary
+    attributes:
+      label: Feature Summary
+      description: A brief, one-sentence description of the feature
+      placeholder: What feature would you like to see added?
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: Problem/Use Case
+      description: What problem does this feature solve? What's your use case?
+      placeholder: |
+        Describe the problem you're facing or the use case this feature would address.
+        Examples:
+        - As a developer, I want to... so that I can...
+        - When using Revi for..., I noticed that...
+        - It would be helpful if Revi could...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Detailed description of the feature you'd like to see
+      placeholder: |
+        Describe your proposed solution in detail:
+        - How should it work?
+        - What should the user interface look like?
+        - How should it integrate with existing features?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other solutions or workarounds have you considered?
+      placeholder: |
+        - Alternative solution 1: ...
+        - Alternative solution 2: ...
+        - Current workaround: ...
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component should this feature be added to?
+      options:
+        - SDK (JavaScript/TypeScript)
+        - Dashboard (Next.js app)
+        - Backend (Encore.ts API)
+        - Documentation
+        - CLI Tools
+        - All components
+        - New component
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would improve my workflow
+        - High - Critical for my use case
+    validations:
+      required: true
+
+  - type: dropdown
+    id: user-type
+    attributes:
+      label: User Type
+      description: What type of user would benefit from this feature?
+      options:
+        - Individual Developer
+        - Small Team (2-10 people)
+        - Large Team (10+ people)
+        - Enterprise Organization
+        - Open Source Project
+        - All users
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups-examples
+    attributes:
+      label: Mockups/Examples
+      description: Any mockups, screenshots, or examples that illustrate your idea
+      placeholder: |
+        You can drag and drop images here, provide links to mockups, or describe the UI/UX.
+        Examples from other tools are also helpful.
+
+  - type: textarea
+    id: technical-considerations
+    attributes:
+      label: Technical Considerations
+      description: Any technical aspects or constraints to consider
+      placeholder: |
+        Consider aspects like:
+        - Performance impact
+        - Security implications
+        - Backward compatibility
+        - Implementation complexity
+
+  - type: checkboxes
+    id: contribution-willingness
+    attributes:
+      label: Contribution
+      description: Are you willing to help implement this feature?
+      options:
+        - label: I'm willing to submit a pull request for this feature
+        - label: I can help with testing once implemented
+        - label: I can help with documentation
+        - label: I can provide design/UX feedback
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information that would be helpful
+      placeholder: |
+        Additional context might include:
+        - Links to related resources
+        - Similar features in other tools
+        - Business justification
+        - Timeline requirements

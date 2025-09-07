@@ -1,9 +1,21 @@
 {
-  "name": "backend",
+  "name": "revi-backend",
   "version": "1.0.0",
+  "description": "Revi backend - Encore.ts API service for error monitoring and data collection",
   "type": "module",
   "packageManager": "bun",
-  "scripts": {},
+  "license": "MIT",
+  "author": "Revi Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tobbiloba/Revi.git",
+    "directory": "backend"
+  },
+  "scripts": {
+    "dev": "encore run",
+    "build": "encore build",
+    "test": "encore test"
+  },
   "dependencies": {
     "axios": "^1.11.0",
     "cors": "^2.8.5",

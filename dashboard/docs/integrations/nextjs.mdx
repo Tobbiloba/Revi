@@ -1,0 +1,429 @@
+---
+title: 'Next.js Integration'
+description: 'Complete guide to integrating Revi error monitoring and session replay in your Next.js application with App Router and Pages Router support.'
+date: 2025-09-07
+---
+
+# Next.js Integration
+
+Integrate Revi seamlessly into your Next.js application for comprehensive error monitoring and session replay. This guide covers both App Router and Pages Router setups.
+
+## Quick Setup
+
+### 1. Install Revi SDK
+
+```bash
+npm install revi-monitor
+```
+
+### 2. Create Revi Configuration
+
+Create `lib/revi.js` in your project:
+
+```javascript
+// lib/revi.js
+import { Monitor } from 'revi-monitor';
+
+export const revi = new Monitor({
+  apiKey: process.env.NEXT_PUBLIC_REVI_API_KEY,
+  apiUrl: process.env.NEXT_PUBLIC_REVI_API_URL,
+  environment: process.env.NODE_ENV,
+  debug: process.env.NODE_ENV === 'development',
+  sampleRate: 1.0,
+  sessionSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+  privacy: {
+    maskInputs: true,
+    maskPasswords: true,
+    maskCreditCards: true,
+  },
+  performance: {
+    captureWebVitals: true,
+    captureNavigationTiming: true,
+  },
+  replay: {
+    enabled: true,
+    maskAllInputs: false,
+    maskAllText: false,
+  },
+});
+```
+
+### 3. Environment Variables
+
+Add to your `.env.local`:
+
+```env
+NEXT_PUBLIC_REVI_API_KEY=revi_your_api_key_here
+NEXT_PUBLIC_REVI_API_URL=https://your-revi-backend.com
+```
+
+## App Router Setup (Next.js 13+)
+
+### Root Layout Integration
+
+Update your `app/layout.tsx`:
+
+```tsx
+// app/layout.tsx
+import { revi } from '@/lib/revi';
+import { Suspense } from 'react';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <ReviProvider>
+          {children}
+        </ReviProvider>
+      </body>
+    </html>
+  );
+}
+
+// Create a client component for Revi initialization
+function ReviProvider({ children }: { children: React.ReactNode }) {
+  'use client';
+  
+  React.useEffect(() => {
+    // Initialize Revi monitoring
+    revi.start();
+    
+    // Expose to window for debugging (development only)
+    if (process.env.NODE_ENV === 'development') {
+      window.Revi = revi;
+    }
+  }, []);
+
+  return <>{children}</>;
+}
+```
+
+### Error Boundary Integration
+
+Create `components/ErrorBoundary.tsx`:
+
+```tsx
+'use client';
+import { revi } from '@/lib/revi';
+import { useEffect } from 'react';
+
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    // Report the error to Revi
+    revi.captureException(error, {
+      tags: {
+        errorBoundary: 'global',
+        digest: error.digest,
+      },
+      extra: {
+        errorInfo: 'Global error boundary caught this error',
+      },
+    });
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          Something went wrong!
+        </h2>
+        <p className="text-gray-600 mb-6">
+          We've been notified about this error and will fix it soon.
+        </p>
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+Add `app/global-error.tsx`:
+
+```tsx
+// app/global-error.tsx
+import ErrorBoundary from '@/components/ErrorBoundary';
+
+export default ErrorBoundary;
+```
+
+## Pages Router Setup (Next.js 12 and earlier)
+
+### _app.js Integration
+
+Update your `pages/_app.js`:
+
+```jsx
+// pages/_app.js
+import { revi } from '@/lib/revi';
+import { useEffect } from 'react';
+import ErrorBoundary from '@/components/ErrorBoundary';
+
+export default function App({ Component, pageProps }) {
+  useEffect(() => {
+    // Initialize Revi monitoring
+    revi.start();
+    
+    // Set user context if available
+    if (pageProps.user) {
+      revi.setUser({
+        id: pageProps.user.id,
+        email: pageProps.user.email,
+        name: pageProps.user.name,
+      });
+    }
+  }, [pageProps.user]);
+
+  return (
+    <ErrorBoundary>
+      <Component {...pageProps} />
+    </ErrorBoundary>
+  );
+}
+```
+
+### _error.js for Error Handling
+
+Create `pages/_error.js`:
+
+```jsx
+// pages/_error.js
+import { revi } from '@/lib/revi';
+
+function Error({ statusCode, err }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          {statusCode || 'Client-side'} Error
+        </h1>
+        <p className="text-gray-600 mb-6">
+          {statusCode
+            ? `A ${statusCode} error occurred on server`
+            : 'An error occurred on client'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+Error.getInitialProps = ({ res, err }) => {
+  const statusCode = res ? res.statusCode : err ? err.statusCode : 404;
+  
+  // Report error to Revi
+  if (err) {
+    revi.captureException(err, {
+      tags: {
+        statusCode: statusCode,
+        context: 'pages-error',
+      },
+    });
+  }
+
+  return { statusCode };
+};
+
+export default Error;
+```
+
+## API Routes Monitoring
+
+Monitor your API routes by wrapping them:
+
+```javascript
+// lib/withRevi.js
+import { revi } from './revi';
+
+export function withRevi(handler) {
+  return async (req, res) => {
+    try {
+      return await handler(req, res);
+    } catch (error) {
+      // Report API errors to Revi
+      revi.captureException(error, {
+        tags: {
+          route: req.url,
+          method: req.method,
+        },
+        extra: {
+          headers: req.headers,
+          query: req.query,
+          body: req.body,
+        },
+      });
+      
+      // Re-throw the error
+      throw error;
+    }
+  };
+}
+```
+
+Use in your API routes:
+
+```javascript
+// pages/api/users.js
+import { withRevi } from '@/lib/withRevi';
+
+async function handler(req, res) {
+  // Your API logic here
+  const users = await fetchUsers();
+  res.json(users);
+}
+
+export default withRevi(handler);
+```
+
+## Advanced Configuration
+
+### Performance Monitoring
+
+Track Next.js specific performance metrics:
+
+```javascript
+// lib/revi.js - Add to your configuration
+export const revi = new Monitor({
+  // ... other config
+  performance: {
+    captureWebVitals: true,
+    captureNavigationTiming: true,
+    captureResourceTiming: true,
+    onWebVital: (metric) => {
+      // Custom handling of web vitals
+      console.log(`${metric.name}: ${metric.value}`);
+    },
+  },
+});
+```
+
+### Custom Context
+
+Add Next.js specific context:
+
+```javascript
+// In your pages or components
+import { useRouter } from 'next/router';
+import { revi } from '@/lib/revi';
+
+export default function MyPage() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    revi.setContext('page', {
+      route: router.route,
+      asPath: router.asPath,
+      query: router.query,
+    });
+  }, [router.route, router.asPath, router.query]);
+  
+  // Component content
+}
+```
+
+### Server-Side Error Reporting
+
+For server-side errors in getServerSideProps or getStaticProps:
+
+```javascript
+// In your page components
+export async function getServerSideProps(context) {
+  try {
+    const data = await fetchData();
+    return { props: { data } };
+  } catch (error) {
+    // Report server-side errors
+    revi.captureException(error, {
+      tags: {
+        context: 'getServerSideProps',
+        page: context.resolvedUrl,
+      },
+    });
+    
+    throw error; // Or handle gracefully
+  }
+}
+```
+
+## Testing Your Integration
+
+### 1. Test Error Capture
+
+Add a test error button to verify integration:
+
+```jsx
+// components/TestError.jsx
+'use client'; // For App Router
+
+export default function TestError() {
+  const triggerError = () => {
+    throw new Error('Test error for Revi integration');
+  };
+
+  const triggerAsyncError = async () => {
+    throw new Error('Test async error for Revi integration');
+  };
+
+  return (
+    <div className="p-4 border rounded">
+      <h3 className="font-bold mb-2">Test Revi Integration</h3>
+      <button
+        onClick={triggerError}
+        className="mr-2 px-4 py-2 bg-red-500 text-white rounded"
+      >
+        Trigger Sync Error
+      </button>
+      <button
+        onClick={triggerAsyncError}
+        className="px-4 py-2 bg-orange-500 text-white rounded"
+      >
+        Trigger Async Error
+      </button>
+    </div>
+  );
+}
+```
+
+### 2. Verify Session Replay
+
+Navigate through your app and check that user interactions are being recorded in the Revi dashboard.
+
+### 3. Check Performance Monitoring
+
+Monitor Core Web Vitals and navigation timing in your dashboard.
+
+## Troubleshooting
+
+### Common Issues
+
+**Hydration errors:**
+- Ensure Revi initialization is client-side only
+- Use `useEffect` or mark components as `'use client'`
+
+**Build errors:**
+- Make sure all environment variables are prefixed with `NEXT_PUBLIC_`
+- Check that the Revi SDK is properly installed
+
+**Session replay not working:**
+- Verify `sessionSampleRate` is greater than 0
+- Check that replay is enabled in configuration
+- Ensure privacy settings aren't blocking necessary data
+
+## Next Steps
+
+- [Configure Error Grouping](/docs/errors/grouping)
+- [Set Up Custom Dashboards](/docs/dashboard/overview)
+- [Integrate with Vercel Deployments](/docs/integrations/vercel)

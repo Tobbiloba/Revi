@@ -80,7 +80,7 @@ export function ErrorGroupingView({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'frequency' | 'recent' | 'severity' | 'users'>('frequency');
   const [showSimilar, setShowSimilar] = useState(true);
-  const [similarityFilter, setSimilarityFilter] = useState<number>(0.7);
+  const [similarityFilter] = useState<number>(0.7);
 
   // Generate error groups based on similarity patterns
   const errorGroups = useMemo((): ErrorGroup[] => {
@@ -162,6 +162,15 @@ export function ErrorGroupingView({
     });
   }, [errorGroups, sortBy]);
 
+  const calculateSimilarity = useCallback((group1: ErrorGroup, group2: ErrorGroup): number => {
+    // Simple similarity calculation based on message and stack patterns
+    const messageSim = stringSimilarity(group1.message_template, group2.message_template);
+    const stackSim = stringSimilarity(group1.stack_pattern, group2.stack_pattern);
+    const urlSim = stringSimilarity(group1.url_pattern, group2.url_pattern);
+    
+    return (messageSim * 0.5 + stackSim * 0.3 + urlSim * 0.2);
+  }, []);
+
   // Find similar groups based on similarity threshold
   const similarGroups = useMemo(() => {
     const pairs: Array<{ group1: ErrorGroup; group2: ErrorGroup; similarity: number }> = [];
@@ -180,7 +189,7 @@ export function ErrorGroupingView({
     }
 
     return pairs.sort((a, b) => b.similarity - a.similarity);
-  }, [sortedGroups, similarityFilter]);
+  }, [sortedGroups, similarityFilter, calculateSimilarity]);
 
   // Helper functions
   const getErrorSeverity = (error: ErrorWithSession): 'critical' | 'high' | 'medium' | 'low' => {
@@ -211,14 +220,6 @@ export function ErrorGroupingView({
       .trim() || 'Generic Error';
   };
 
-  const calculateSimilarity = (group1: ErrorGroup, group2: ErrorGroup): number => {
-    // Simple similarity calculation based on message and stack patterns
-    const messageSim = stringSimilarity(group1.message_template, group2.message_template);
-    const stackSim = stringSimilarity(group1.stack_pattern, group2.stack_pattern);
-    const urlSim = stringSimilarity(group1.url_pattern, group2.url_pattern);
-    
-    return (messageSim * 0.5 + stackSim * 0.3 + urlSim * 0.2);
-  };
 
   const stringSimilarity = (str1: string, str2: string): number => {
     if (str1 === str2) return 1;

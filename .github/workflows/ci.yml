@@ -1,0 +1,192 @@
+name: 🔄 CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # SDK Testing
+  test-sdk:
+    name: 🧪 Test SDK
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 📋 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧪 Run SDK tests
+        run: |
+          cd sdk
+          bun test --coverage
+
+      - name: 🔍 Lint SDK
+        run: |
+          cd sdk
+          bun run lint
+
+      - name: 🏗️ Build SDK
+        run: |
+          cd sdk
+          bun run build
+
+      - name: 📊 Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: sdk/coverage/lcov.info
+          flags: sdk
+
+  # Dashboard Testing
+  test-dashboard:
+    name: 🧪 Test Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 📋 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧪 Run dashboard tests
+        run: |
+          cd dashboard
+          bun test
+
+      - name: 🔍 Lint dashboard
+        run: |
+          cd dashboard
+          bun run lint
+
+      - name: 🏗️ Build dashboard
+        run: |
+          cd dashboard
+          bun run build
+        env:
+          NEXT_PUBLIC_REVI_API_URL: http://localhost:4000
+
+  # Backend Testing
+  test-backend:
+    name: 🧪 Test Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: revi_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 🎭 Install Encore
+        run: |
+          curl -L https://encore.dev/install.sh | bash
+          echo "$HOME/.encore/bin" >> $GITHUB_PATH
+
+      - name: 📋 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧪 Run backend tests
+        run: |
+          cd backend
+          encore test
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/revi_test
+          REDIS_URL: redis://localhost:6379
+
+  # Security & Quality Checks
+  security-check:
+    name: 🛡️ Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 📋 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🔍 Run security audit
+        run: bun audit
+
+      - name: 🛡️ Run CodeQL Analysis
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript
+
+      - name: 🛡️ Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  # Build check
+  build-check:
+    name: 🏗️ Build Check
+    runs-on: ubuntu-latest
+    needs: [test-sdk, test-dashboard, test-backend]
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 📋 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🏗️ Build all packages
+        run: |
+          # Build SDK
+          cd sdk && bun run build && cd ..
+          
+          # Build dashboard
+          cd dashboard && bun run build && cd ..
+        env:
+          NEXT_PUBLIC_REVI_API_URL: http://localhost:4000
+
+      - name: ✅ All builds successful
+        run: echo "🎉 All packages built successfully!"

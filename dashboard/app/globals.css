@@ -3,6 +3,32 @@
 
 @theme {
   --font-family-neue-montreal: "Neue Montreal", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-edu: "Edu NSW ACT Cursive", cursive, ui-serif;
+  
+  /* Revi Brand Colors */
+  --color-revi-primary: #10b981;      /* Emerald-500 - Primary brand color */
+  --color-revi-primary-dark: #059669;  /* Emerald-600 - Hover states */
+  --color-revi-secondary: #06b6d4;     /* Cyan-500 - Secondary accent */
+  --color-revi-accent: #8b5cf6;        /* Violet-500 - Charts and highlights */
+  
+  /* Error Monitoring Theme Colors */
+  --color-error-critical: #ef4444;     /* Red-500 - Critical errors */
+  --color-error-warning: #f59e0b;      /* Amber-500 - Warnings */
+  --color-error-info: #3b82f6;         /* Blue-500 - Info messages */
+  --color-success: #22c55e;            /* Green-500 - Success states */
+  
+  /* Dark Theme Enhancements */
+  --color-background-dark: #0f0f0f;    /* Rich black background */
+  --color-surface-dark: #1a1a1a;       /* Dark surfaces */
+  --color-border-dark: #2a2a2a;        /* Dark borders */
+  
+  /* Monitoring Dashboard Colors */
+  --color-chart-1: #10b981;   /* Emerald for sessions */
+  --color-chart-2: #ef4444;   /* Red for errors */
+  --color-chart-3: #3b82f6;   /* Blue for performance */
+  --color-chart-4: #8b5cf6;   /* Violet for vitals */
+  --color-chart-5: #f59e0b;   /* Amber for memory */
+  --color-chart-6: #06b6d4;   /* Cyan for CPU */
 }
 
 @font-face {
@@ -98,4 +124,56 @@
 * {
   scrollbar-width: thin;          /* makes scrollbar thinner */
   scrollbar-color: rgba(255,255,255,0.5) transparent; 
+}
+
+/* Documentation Typography Enhancements */
+.mdx-content {
+  line-height: 1.6;
+  letter-spacing: 0.005em;
+}
+
+.mdx-content h1,
+.mdx-content h2,
+.mdx-content h3,
+.mdx-content h4 {
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.mdx-content p + p {
+  margin-top: 1rem;
+}
+
+.mdx-content p strong {
+  font-weight: 600;
+  color: theme('colors.gray.900');
+}
+
+.dark .mdx-content p strong {
+  color: theme('colors.gray.100');
+}
+
+.mdx-content blockquote p {
+  margin: 0;
+  font-style: italic;
+}
+
+.mdx-content ul li::marker,
+.mdx-content ol li::marker {
+  color: theme('colors.blue.600');
+  font-weight: 600;
+}
+
+.dark .mdx-content ul li::marker,
+.dark .mdx-content ol li::marker {
+  color: theme('colors.blue.400');
+}
+
+.mdx-content a:hover {
+  text-shadow: 0 0 8px theme('colors.blue.600/20');
+}
+
+/* Enhanced Section Spacing */
+.prose-content section + section {
+  margin-top: 4rem;
 }

@@ -83,10 +83,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/revi-monitor.git"
+    "url": "https://github.com/Tobbiloba/Revi.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/revi-monitor/issues"
+    "url": "https://github.com/Tobbiloba/Revi/issues"
   },
-  "homepage": "https://github.com/yourusername/revi-monitor#readme"
+  "homepage": "https://revi-five.vercel.app"
 }

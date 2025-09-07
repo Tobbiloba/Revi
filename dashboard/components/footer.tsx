@@ -7,7 +7,7 @@ const links = [
     },
     {
         title: 'Documentation',
-        href: '/docs',
+        href: '/docs/getting-started/introduction',
     },
     {
         title: 'Integrations',
@@ -19,11 +19,11 @@ const links = [
     },
     {
         title: 'Support',
-        href: '/support',
+        href: '#support',
     },
     {
         title: 'About',
-        href: '/about',
+        href: '#about',
     },
 ]
 

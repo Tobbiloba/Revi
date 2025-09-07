@@ -48,7 +48,7 @@ interface ErrorPredictionAlertsProps {
 
 export function ErrorPredictionAlerts({ className }: ErrorPredictionAlertsProps) {
   const [alerts, setAlerts] = useState<PredictionAlert[]>([]);
-  const [selectedAlert, setSelectedAlert] = useState<string | null>(null);
+  const [selectedAlert] = useState<string | null>(null);
   const [alertSettings, setAlertSettings] = useState({
     emailNotifications: true,
     slackNotifications: false,
