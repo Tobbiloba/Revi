@@ -3,9 +3,7 @@ import type { Metadata } from "next";
 import { ThemeProvider, QueryProvider } from "../components/provider";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
-import { Menubar } from "@/components/layout/home/navbar";
 import ErrorBoundary from "@/components/error-boundary";
-import Footer from "@/components/layout/home/footer";
 import { NotificationProvider } from "@/components/ui/notification-provider";
 export const metadata: Metadata = {
   title: "Revi - Error Monitoring & Session Replay",

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import {
   IconUsers,
   IconClock,
   IconChevronRight,
-  IconFilter,
   IconSearch
 } from "@tabler/icons-react";
 import Link from 'next/link';
@@ -149,7 +148,7 @@ export function ErrorGroupsView({ projectId }: ErrorGroupsViewProps) {
     );
   };
 
-  const getTrendIcon = (trend: string, change: number) => {
+  const getTrendIcon = (trend: string) => {
     if (trend === 'up') {
       return <IconTrendingUp className="size-4 text-red-500" />;
     } else if (trend === 'down') {
@@ -316,7 +315,7 @@ export function ErrorGroupsView({ projectId }: ErrorGroupsViewProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {getTrendIcon(group.trend, group.error_rate_change)}
+                  {getTrendIcon(group.trend)}
                   <div>
                     <div className="font-medium">
                       {group.error_rate_change > 0 ? '+' : ''}{group.error_rate_change.toFixed(1)}%

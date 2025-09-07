@@ -60,18 +60,18 @@ export function ProjectsOverview() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-8">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-                <Skeleton className="h-4 w-24" />
+            <Card key={i} className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg animate-pulse">
+              <CardHeader className="pb-4">
+                <Skeleton className="h-6 w-32 bg-gray-200/50 dark:bg-gray-700/50" />
+                <Skeleton className="h-4 w-24 bg-gray-200/50 dark:bg-gray-700/50" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full bg-gray-200/50 dark:bg-gray-700/50" />
+                  <Skeleton className="h-4 w-3/4 bg-gray-200/50 dark:bg-gray-700/50" />
                 </div>
               </CardContent>
             </Card>
@@ -83,10 +83,15 @@ export function ProjectsOverview() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-destructive">Error Loading Projects</CardTitle>
-          <CardDescription>
+          <CardTitle className="flex items-center gap-3 text-xl font-normal">
+            <div className="p-2 rounded-lg bg-red-500/10">
+              <IconAlertTriangle className="size-6 text-red-600 dark:text-red-400" />
+            </div>
+            <span className="text-gray-800 dark:text-gray-200">Error Loading Projects</span>
+          </CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 text-base font-light">
             Failed to load projects. Please try again.
           </CardDescription>
         </CardHeader>
@@ -97,20 +102,20 @@ export function ProjectsOverview() {
   // No projects state
   if (projects.length === 0) {
     return (
-      <div className="space-y-6">
-        <Card className="border-dashed border-2">
-          <CardContent className="p-8 text-center">
-            <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-              <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-6">
-                <IconFolderPlus className="h-8 w-8 text-muted-foreground" />
+      <div className="space-y-8">
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
+          <CardContent className="p-12 text-center">
+            <div className="mx-auto flex max-w-[480px] flex-col items-center justify-center text-center">
+              <div className="mx-auto w-20 h-20 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-8">
+                <IconFolderPlus className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Welcome to Revi!</h3>
-              <p className="text-muted-foreground mb-6">
+              <h3 className="text-2xl font-light mb-3 text-gray-800 dark:text-gray-200">Welcome to Revi!</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg font-light leading-relaxed">
                 Get started by creating your first monitoring project. You&apos;ll receive an API key to integrate error tracking into your application.
               </p>
               <Link href="/dashboard/projects/create">
-                <Button size="lg" aria-label="Create your first monitoring project">
-                  <IconFolderPlus className="h-5 w-5 mr-2" aria-hidden="true" />
+                <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 font-normal px-8 py-3" aria-label="Create your first monitoring project">
+                  <IconFolderPlus className="h-5 w-5 mr-3" aria-hidden="true" />
                   Create Your First Project
                 </Button>
               </Link>
@@ -118,38 +123,44 @@ export function ProjectsOverview() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="bg-blue-50/50 border-blue-200 dark:bg-blue-950/50 dark:border-blue-800">
-            <CardHeader>
-              <IconActivity className="h-8 w-8 text-blue-500 mb-2" />
-              <CardTitle className="text-blue-800 dark:text-blue-200">Real-time Monitoring</CardTitle>
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-4">
+              <div className="p-3 rounded-lg bg-blue-500/10 w-fit mb-3">
+                <IconActivity className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              </div>
+              <CardTitle className="text-xl font-normal text-gray-800 dark:text-gray-200">Real-time Monitoring</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-gray-600 dark:text-gray-400 font-light">
                 Track errors and user sessions as they happen in your applications.
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-green-50/50 border-green-200 dark:bg-green-950/50 dark:border-green-800">
-            <CardHeader>
-              <IconUsers className="h-8 w-8 text-green-500 mb-2" />
-              <CardTitle className="text-green-800 dark:text-green-200">Session Replay</CardTitle>
+          <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-4">
+              <div className="p-3 rounded-lg bg-emerald-500/10 w-fit mb-3">
+                <IconUsers className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <CardTitle className="text-xl font-normal text-gray-800 dark:text-gray-200">Session Replay</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-green-700 dark:text-green-300">
+              <p className="text-gray-600 dark:text-gray-400 font-light">
                 See exactly what users were doing when errors occurred.
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-purple-50/50 border-purple-200 dark:bg-purple-950/50 dark:border-purple-800">
-            <CardHeader>
-              <IconTrendingUp className="h-8 w-8 text-purple-500 mb-2" />
-              <CardTitle className="text-purple-800 dark:text-purple-200">Performance Insights</CardTitle>
+          <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-4">
+              <div className="p-3 rounded-lg bg-purple-500/10 w-fit mb-3">
+                <IconTrendingUp className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              </div>
+              <CardTitle className="text-xl font-normal text-gray-800 dark:text-gray-200">Performance Insights</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-purple-700 dark:text-purple-300">
+              <p className="text-gray-600 dark:text-gray-400 font-light">
                 Monitor application performance and identify bottlenecks.
               </p>
             </CardContent>
@@ -161,57 +172,57 @@ export function ProjectsOverview() {
 
   // Projects overview
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Quick Stats - Now showing real data from aggregated API */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Projects</CardDescription>
-            <CardTitle className="text-2xl">{summary?.totalProjects || projects.length}</CardTitle>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Total Projects</CardDescription>
+            <CardTitle className="text-3xl font-light text-gray-800 dark:text-gray-200">{summary?.totalProjects || projects.length}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <IconActivity className="h-3 w-3" />
-              <span>Active monitoring</span>
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <IconActivity className="h-4 w-4 text-emerald-500" />
+              <span className="font-light">Active monitoring</span>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Errors</CardDescription>
-            <CardTitle className="text-2xl">{summary?.totalErrors?.toLocaleString() || '0'}</CardTitle>
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Total Errors</CardDescription>
+            <CardTitle className="text-3xl font-light text-gray-800 dark:text-gray-200">{summary?.totalErrors?.toLocaleString() || '0'}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <IconAlertTriangle className="h-3 w-3" />
-              <span>Last 7 days</span>
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <IconAlertTriangle className="h-4 w-4 text-red-500" />
+              <span className="font-light">Last 7 days</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Active Sessions</CardDescription>
-            <CardTitle className="text-2xl">{summary?.totalActiveSessions?.toLocaleString() || '0'}</CardTitle>
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Active Sessions</CardDescription>
+            <CardTitle className="text-3xl font-light text-gray-800 dark:text-gray-200">{summary?.totalActiveSessions?.toLocaleString() || '0'}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <IconUsers className="h-3 w-3" />
-              <span>Last 7 days</span>
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <IconUsers className="h-4 w-4 text-blue-500" />
+              <span className="font-light">Last 7 days</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Unique Users</CardDescription>
-            <CardTitle className="text-2xl">{summary?.totalUniqueUsers?.toLocaleString() || '0'}</CardTitle>
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Unique Users</CardDescription>
+            <CardTitle className="text-3xl font-light text-gray-800 dark:text-gray-200">{summary?.totalUniqueUsers?.toLocaleString() || '0'}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <IconUsers className="h-3 w-3" />
-              <span>Last 7 days</span>
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <IconUsers className="h-4 w-4 text-purple-500" />
+              <span className="font-light">Last 7 days</span>
             </div>
           </CardContent>
         </Card>
@@ -219,46 +230,48 @@ export function ProjectsOverview() {
 
       {/* Error Trend Insight - Only show if there are errors */}
       {summary?.totalErrors && summary.totalErrors > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <IconTrendingUp className="h-5 w-5" />
-              Recent Error Activity
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl font-normal">
+              <div className="p-2 rounded-lg bg-red-500/10">
+                <IconTrendingUp className="size-6 text-red-600 dark:text-red-400" />
+              </div>
+              <span className="text-gray-800 dark:text-gray-200">Recent Error Activity</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-600 dark:text-gray-400 text-base font-light">
               Error trend across all projects in the last 7 days
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between text-sm">
-              <div className="text-muted-foreground">
-                Total errors: <span className="font-medium text-foreground">{summary.totalErrors}</span>
+            <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
+              <div className="text-gray-600 dark:text-gray-400 font-light">
+                Total errors: <span className="font-normal text-gray-800 dark:text-gray-200">{summary.totalErrors}</span>
               </div>
-              <div className="text-muted-foreground">
-                Avg. rate: <span className="font-medium text-foreground">{summary.avgErrorRate}/day</span>
+              <div className="text-gray-600 dark:text-gray-400 font-light">
+                Avg. rate: <span className="font-normal text-gray-800 dark:text-gray-200">{summary.avgErrorRate}/day</span>
               </div>
               {summary.lastActivity && (
-                <div className="text-muted-foreground">
-                  Last error: <span className="font-medium text-foreground">
+                <div className="text-gray-600 dark:text-gray-400 font-light">
+                  Last error: <span className="font-normal text-gray-800 dark:text-gray-200">
                     {formatRelativeTime(summary.lastActivity)}
                   </span>
                 </div>
               )}
             </div>
             {topErrors.length > 0 && (
-              <div className="mt-3 pt-3 border-t">
-                <p className="text-xs text-muted-foreground mb-2">Most common errors:</p>
-                <div className="space-y-1">
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-light mb-4">Most common errors:</p>
+                <div className="space-y-3">
                   {topErrors.slice(0, 3).map((error: TopError, index: number) => (
-                    <div key={index} className="flex items-center justify-between text-xs">
-                      <span className="truncate max-w-[200px]" title={error?.message || 'Unknown error'}>
+                    <div key={index} className="flex items-center justify-between text-sm bg-white/20 dark:bg-gray-700/30 rounded-lg p-3">
+                      <span className="truncate max-w-[250px] font-light text-gray-700 dark:text-gray-300" title={error?.message || 'Unknown error'}>
                         {error?.message || 'Unknown error'}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <Badge variant="secondary" className="text-xs px-2 py-1 bg-gray-200/50 dark:bg-gray-600/50 text-gray-700 dark:text-gray-300 border-0 font-light">
                           {error?.affectedProjects || 0} {(error?.affectedProjects || 0) === 1 ? 'project' : 'projects'}
                         </Badge>
-                        <span className="text-muted-foreground">
+                        <span className="text-gray-600 dark:text-gray-400 font-light">
                           {error?.count || 0}×
                         </span>
                       </div>
@@ -273,17 +286,21 @@ export function ProjectsOverview() {
 
       {/* Projects Grid */}
       <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Your Projects</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-light text-gray-800 dark:text-gray-200">Your Projects</h2>
           <Link href="/dashboard/projects/create">
-            <Button variant="outline" aria-label="Create new monitoring project">
-              <IconFolderPlus className="h-4 w-4 mr-2" aria-hidden="true" />
-              Create Project
+            <Button 
+              variant="outline" 
+              className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors font-normal"
+              aria-label="Create new monitoring project"
+            >
+              <IconFolderPlus className="h-4 w-4 mr-2 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+              <span className="text-gray-700 dark:text-gray-300">Create Project</span>
             </Button>
           </Link>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {projects.map((project: ProjectHealthSummary) => (
             <OptimizedProjectHealthCard key={project.id} project={project} />
           ))}

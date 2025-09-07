@@ -13,7 +13,7 @@ export default async function DashboardLayout({
     <ProjectProvider>
       <div className="flex h-screen overflow-hidden w-full">
         <DashboardSideBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-[#121418]">
           <DashboardTopNav>{children}</DashboardTopNav>
         </main>
         <Chatbot />

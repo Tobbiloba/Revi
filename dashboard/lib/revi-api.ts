@@ -125,6 +125,16 @@ export interface ProjectStats {
     count: number;
     percentage: number;
   }>;
+  deviceTypeDistribution: Array<{
+    deviceType: string;
+    count: number;
+    percentage: number;
+  }>;
+  screenResolutionDistribution: Array<{
+    resolution: string;
+    count: number;
+    percentage: number;
+  }>;
   topErrorPages: Array<{
     url: string;
     count: number;
@@ -197,6 +207,28 @@ export interface BatchHealthCheckResponse {
     activeSessions: number;
     status: 'critical' | 'warning' | 'active' | 'healthy' | 'unknown';
   }>;
+}
+
+export interface UserJourney {
+  sessionId: string;
+  userId?: string;
+  path: string[];
+  timestamps: Date[];
+  errors: ErrorWithSession[];
+  duration: number;
+  converted: boolean;
+}
+
+export interface GetUserJourneysParams {
+  limit?: number;
+  days?: number;
+  includeConverted?: boolean;
+}
+
+export interface GetUserJourneysResponse {
+  success: true;
+  journeys: UserJourney[];
+  total: number;
 }
 
 export interface Project {
@@ -467,6 +499,33 @@ class ReviAPIClient {
         project.lastActivity = new Date(project.lastActivity);
       }
     });
+    
+    return response;
+  }
+
+  // User Journey methods
+  async getUserJourneys(params: GetUserJourneysParams = {}): Promise<GetUserJourneysResponse> {
+    const searchParams = new URLSearchParams();
+    
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.days) searchParams.append('days', params.days.toString());
+    if (params.includeConverted !== undefined) searchParams.append('includeConverted', params.includeConverted.toString());
+    
+    const queryString = searchParams.toString();
+    const endpoint = `/api/projects/${this.projectId}/user-journeys${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await this.makeRequest<GetUserJourneysResponse>(endpoint);
+    
+    // Convert date strings to Date objects
+    response.journeys = response.journeys.map(journey => ({
+      ...journey,
+      timestamps: journey.timestamps.map(ts => new Date(ts)),
+      errors: journey.errors.map(error => ({
+        ...error,
+        timestamp: new Date(error.timestamp),
+        resolved_at: error.resolved_at ? new Date(error.resolved_at) : undefined
+      }))
+    }));
     
     return response;
   }

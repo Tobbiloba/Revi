@@ -37,9 +37,13 @@ export default function UserProfile({ mini }: { mini?: boolean }) {
 
     try {
       const result = await authClient.getSession();
+      
+      console.log("Auth session result:", result); // Debug logging
 
       if (!result.data?.user) {
-        router.push("/sign-in");
+        console.warn("No user data in session, but not redirecting. Server middleware should handle auth.", result);
+        // Don't redirect immediately - let the server handle auth redirects
+        setError("Unable to load user data");
         return;
       }
 
@@ -47,6 +51,11 @@ export default function UserProfile({ mini }: { mini?: boolean }) {
     } catch (error) {
       console.error("Error fetching user data:", error);
       setError("Failed to load user profile. Please try refreshing the page.");
+      // Only redirect on actual network/auth errors, not missing data
+      if (error instanceof Error && error.message.includes('unauthorized')) {
+        console.log("Unauthorized error, redirecting to sign-in");
+        router.push("/sign-in");
+      }
     } finally {
       setLoading(false);
     }

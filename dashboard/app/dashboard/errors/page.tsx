@@ -1,7 +1,4 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { ErrorListView } from "./_components/error-list-view";
+import { ErrorsPageClient } from "./_components/errors-page-client";
 
 export default async function ErrorsPage() {
 
@@ -13,10 +10,10 @@ export default async function ErrorsPage() {
             Error Management
           </h1>
           <p className="text-muted-foreground">
-            Monitor and analyze application errors across your project. View detailed stack traces, user context, and error patterns.
+            Monitor and analyze application errors across your project. View detailed stack traces, user context, error patterns, and business impact analysis.
           </p>
         </div>
-        <ErrorListView />
+        <ErrorsPageClient />
       </div>
     </section>
   );

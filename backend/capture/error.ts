@@ -3,6 +3,29 @@ import { db } from "./db";
 import { processError } from "../intelligence/grouping";
 import { cacheManager } from "../cache/redis-cache";
 import { backgroundJobProcessor } from "../jobs/background-processor";
+import { broadcastSessionError } from "../sessions/streaming";
+
+export interface DeviceInfoData {
+  browser_name: string;
+  browser_version: string;
+  browser_major_version: number;
+  os_name: string;
+  os_version: string;
+  device_type: 'desktop' | 'mobile' | 'tablet' | 'unknown';
+  device_fingerprint: string;
+  screen_resolution: string;
+  color_depth: number;
+  device_pixel_ratio: number;
+  viewport_size: string;
+  platform: string;
+  language: string;
+  timezone: string;
+  canvas_fingerprint?: string;
+  webgl_fingerprint?: string;
+  cookie_enabled: boolean;
+  local_storage_enabled: boolean;
+  session_storage_enabled: boolean;
+}
 
 export interface CaptureErrorRequest {
   message?: string;
@@ -12,6 +35,7 @@ export interface CaptureErrorRequest {
   session_id?: string;
   metadata?: Record<string, any>;
   errors?: ErrorData[];
+  device_info?: DeviceInfoData;
 }
 
 export interface ErrorData {
@@ -21,6 +45,7 @@ export interface ErrorData {
   user_agent?: string;
   session_id?: string;
   metadata?: Record<string, any>;
+  device_info?: DeviceInfoData;
 }
 
 export interface CaptureErrorResponse {
@@ -50,6 +75,16 @@ export const captureError = api<CaptureErrorParams, CaptureErrorResponse>(
     
     // OPTIMIZATION: Batch insert errors for significant performance improvement
     const errorIds = await batchInsertErrors(projectId, errorsToProcess);
+    
+    // Process device analytics for all errors (async, don't block error capture)
+    errorsToProcess.forEach(errorData => {
+      // Ensure we only process valid ErrorData objects
+      if (errorData && typeof errorData === 'object' && 'message' in errorData) {
+        processDeviceAnalytics(projectId, errorData as ErrorData).catch(error => 
+          console.error('Device analytics processing failed:', error)
+        );
+      }
+    });
     
     // OPTIMIZATION: Use background processing for non-critical error grouping if bulk upload
     if (errorsToProcess.length > 5) {
@@ -100,6 +135,21 @@ export const captureError = api<CaptureErrorParams, CaptureErrorResponse>(
       cacheManager.invalidateProjectCaches(projectId).catch(error => 
         console.error('Cache invalidation failed:', error)
       );
+      
+      // Broadcast new errors to streaming clients
+      if (errorsToProcess.length <= 5) { // Only for synchronous processing
+        errorIds.forEach(async (errorId, index) => {
+          const errorData = errorsToProcess[index];
+          if (errorData?.session_id) {
+            await broadcastSessionError(errorData.session_id, {
+              id: errorId,
+              message: errorData.message || 'Unknown error',
+              stack_trace: errorData.stack_trace,
+              url: errorData.url
+            });
+          }
+        });
+      }
     }
   }
 );
@@ -230,6 +280,83 @@ async function parallelProcessErrorGrouping(
   }
   
   return errorGroups;
+}
+
+/**
+ * Process device information and update device analytics
+ */
+async function processDeviceAnalytics(projectId: number, errorData: ErrorData): Promise<void> {
+  if (!errorData.device_info) return;
+  
+  const deviceInfo = errorData.device_info;
+  
+  try {
+    // Update or insert device analytics
+    await db.queryRow`
+      INSERT INTO device_analytics (
+        project_id, device_fingerprint, device_type, browser_name, browser_version,
+        os_name, os_version, screen_resolution, color_depth, platform,
+        language, timezone, user_agent, first_seen, last_seen, total_sessions,
+        total_page_views, total_errors, metadata, created_at, updated_at
+      )
+      VALUES (
+        ${projectId}, ${deviceInfo.device_fingerprint}, ${deviceInfo.device_type},
+        ${deviceInfo.browser_name}, ${deviceInfo.browser_version}, ${deviceInfo.os_name},
+        ${deviceInfo.os_version}, ${deviceInfo.screen_resolution}, ${deviceInfo.color_depth},
+        ${deviceInfo.platform}, ${deviceInfo.language}, ${deviceInfo.timezone},
+        ${deviceInfo.browser_name + ' ' + deviceInfo.browser_version}, NOW(), NOW(), 1, 0, 1,
+        ${JSON.stringify({
+          device_pixel_ratio: deviceInfo.device_pixel_ratio,
+          viewport_size: deviceInfo.viewport_size,
+          canvas_fingerprint: deviceInfo.canvas_fingerprint,
+          webgl_fingerprint: deviceInfo.webgl_fingerprint,
+          cookie_enabled: deviceInfo.cookie_enabled,
+          local_storage_enabled: deviceInfo.local_storage_enabled,
+          session_storage_enabled: deviceInfo.session_storage_enabled
+        })}, NOW(), NOW()
+      )
+      ON CONFLICT (device_fingerprint) DO UPDATE SET
+        last_seen = NOW(),
+        total_errors = device_analytics.total_errors + 1,
+        browser_name = COALESCE(device_analytics.browser_name, ${deviceInfo.browser_name}),
+        browser_version = COALESCE(device_analytics.browser_version, ${deviceInfo.browser_version}),
+        os_name = COALESCE(device_analytics.os_name, ${deviceInfo.os_name}),
+        os_version = COALESCE(device_analytics.os_version, ${deviceInfo.os_version}),
+        device_type = COALESCE(device_analytics.device_type, ${deviceInfo.device_type}),
+        updated_at = NOW()
+    `;
+    
+    // Update user analytics if we have user information
+    if (errorData.metadata?.userId) {
+      await db.queryRow`
+        INSERT INTO user_analytics (
+          project_id, user_id, user_fingerprint, first_seen, last_seen,
+          total_sessions, total_errors, total_page_views, browser_name, browser_version,
+          os_name, os_version, device_type, language, timezone, user_agent,
+          metadata, created_at, updated_at
+        )
+        VALUES (
+          ${projectId}, ${errorData.metadata.userId}, ${deviceInfo.device_fingerprint},
+          NOW(), NOW(), 1, 1, 0, ${deviceInfo.browser_name}, ${deviceInfo.browser_version},
+          ${deviceInfo.os_name}, ${deviceInfo.os_version}, ${deviceInfo.device_type},
+          ${deviceInfo.language}, ${deviceInfo.timezone}, ${deviceInfo.browser_name + ' ' + deviceInfo.browser_version},
+          ${JSON.stringify({ device_fingerprint: deviceInfo.device_fingerprint })}, NOW(), NOW()
+        )
+        ON CONFLICT (project_id, user_id) DO UPDATE SET
+          last_seen = NOW(),
+          total_errors = user_analytics.total_errors + 1,
+          browser_name = COALESCE(user_analytics.browser_name, ${deviceInfo.browser_name}),
+          browser_version = COALESCE(user_analytics.browser_version, ${deviceInfo.browser_version}),
+          os_name = COALESCE(user_analytics.os_name, ${deviceInfo.os_name}),
+          os_version = COALESCE(user_analytics.os_version, ${deviceInfo.os_version}),
+          device_type = COALESCE(user_analytics.device_type, ${deviceInfo.device_type}),
+          updated_at = NOW()
+      `;
+    }
+  } catch (error) {
+    console.error('Failed to process device analytics:', error);
+    // Don't fail the error capture if device analytics fail
+  }
 }
 
 async function validateApiKey(apiKey: string): Promise<number> {

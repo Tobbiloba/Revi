@@ -1,11 +1,5 @@
-import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
-import "./globals.css";
-import { Analytics } from "@vercel/analytics/next";
 import { Menubar } from "@/components/layout/home/navbar";
-import ErrorBoundary from "@/components/error-boundary";
-import Footer from "@/components/layout/home/footer";
-import { NotificationProvider } from "@/components/ui/notification-provider";
 export const metadata: Metadata = {
   title: "Revi - Error Monitoring & Session Replay",
   description:
@@ -41,7 +35,6 @@ export default function RootLayout({
           <Menubar />
         </div>
         {children}
-        <Footer />
       </body>
     </html>
   );

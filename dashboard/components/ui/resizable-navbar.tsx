@@ -236,9 +236,9 @@ export const NavbarLogo = () => {
     return (
         <a
             href="#"
-            className="relative z-20 mr-4 w-fit flex items-center space-x-2 bg-white rounded-md"
+            className="relative z-20 mr-4 w-fit flex items-center space-x-2 rounded-md"
         >
-            <Image src="/logo.png" width={150} height={150} alt="logo" className="w-16"/>
+            <Image src="/logo-white.png" width={150} height={150} alt="logo" className="w-12"/>
             {/* <span className="font-medium text-black dark:text-white">Startup</span> */}
         </a>
     );

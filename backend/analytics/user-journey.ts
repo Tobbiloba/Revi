@@ -47,6 +47,9 @@ export const captureUserEvent = api<CaptureUserEventRequest, { success: boolean;
       req.user_id
     );
     
+    // Ensure session exists in sessions table
+    await ensureSessionExists(projectId, req.session_id, req.user_id);
+    
     // Insert the event
     const result = await db.queryRow<{ id: number }>`
       INSERT INTO user_journey_events (
@@ -374,6 +377,87 @@ async function validateApiKey(apiKey: string): Promise<number> {
   
   return project.id;
 }
+
+/**
+ * Ensure session exists in sessions table - create if doesn't exist
+ */
+async function ensureSessionExists(projectId: number, sessionId: string, userId?: string): Promise<void> {
+  // Check if session already exists
+  const existingSession = await db.queryRow<{ id: number }>`
+    SELECT id FROM sessions WHERE session_id = ${sessionId} AND project_id = ${projectId}
+  `;
+  
+  if (!existingSession) {
+    // Create new session record
+    await db.exec`
+      INSERT INTO sessions (
+        project_id, session_id, user_id, started_at, metadata
+      ) VALUES (
+        ${projectId}, ${sessionId}, ${userId}, NOW(), '{}'
+      )
+      ON CONFLICT (project_id, session_id) DO UPDATE SET
+        user_id = COALESCE(sessions.user_id, ${userId}),
+        ended_at = NULL
+    `;
+  }
+}
+
+/**
+ * Migrate existing user journey events to create sessions
+ * This should be called once to backfill sessions from existing data
+ */
+export const backfillSessionsFromJourneyEvents = api<{}, { success: boolean; sessions_created: number }>(
+  { expose: true, method: "POST", path: "/api/analytics/backfill-sessions" },
+  async () => {
+    // Get all distinct session_id, project_id combinations from user_journey_events that don't have sessions
+    const missingSessionsQuery = `
+      SELECT DISTINCT uje.project_id, uje.session_id, uje.user_id,
+             MIN(uje.timestamp) as started_at
+      FROM user_journey_events uje
+      LEFT JOIN sessions s ON s.project_id = uje.project_id AND s.session_id = uje.session_id
+      WHERE s.id IS NULL
+      GROUP BY uje.project_id, uje.session_id, uje.user_id
+      ORDER BY started_at DESC
+    `;
+    
+    const missingSessions = await db.rawQueryAll<{
+      project_id: number;
+      session_id: string;
+      user_id?: string;
+      started_at: Date;
+    }>(missingSessionsQuery);
+    
+    console.log(`Found ${missingSessions.length} missing sessions to create`);
+    
+    let sessionsCreated = 0;
+    
+    // Create sessions in batches
+    for (const sessionData of missingSessions) {
+      try {
+        await db.exec`
+          INSERT INTO sessions (
+            project_id, session_id, user_id, started_at, metadata
+          ) VALUES (
+            ${sessionData.project_id}, ${sessionData.session_id}, 
+            ${sessionData.user_id}, ${sessionData.started_at}, '{}'
+          )
+          ON CONFLICT (project_id, session_id) DO NOTHING
+        `;
+        
+        sessionsCreated++;
+      } catch (error) {
+        console.error(`Failed to create session ${sessionData.session_id}:`, error);
+      }
+    }
+    
+    console.log(`Successfully created ${sessionsCreated} sessions`);
+    
+    return {
+      success: true,
+      sessions_created: sessionsCreated
+    };
+  }
+);
 
 /**
  * Generate user fingerprint for anonymous tracking

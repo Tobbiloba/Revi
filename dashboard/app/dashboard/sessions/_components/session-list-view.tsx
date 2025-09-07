@@ -27,7 +27,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function SessionListView() {
+interface SessionListViewProps {
+  projectId?: number;
+}
+
+export function SessionListView({ projectId }: SessionListViewProps) {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<{
@@ -74,7 +78,7 @@ export function SessionListView() {
     }
 
     return params;
-  }, [page, filters]);
+  }, [projectId, page, filters]);
 
   const { data, isLoading, error, refetch, isFetching } = useSessions(queryParams);
 
@@ -105,10 +109,10 @@ export function SessionListView() {
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
+          <Card key={i} className="animate-pulse bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader>
-              <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-              <div className="h-3 bg-muted rounded w-1/2" />
+              <div className="h-4 bg-gray-100/30 dark:bg-gray-700/30 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-gray-100/30 dark:bg-gray-700/30 rounded w-1/2" />
             </CardHeader>
           </Card>
         ))}
@@ -118,18 +122,18 @@ export function SessionListView() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2">
+          <CardTitle className="text-red-600 dark:text-red-400 flex items-center gap-2 font-normal">
             <IconAlertCircle className="size-5" />
             Failed to load sessions
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-gray-600 dark:text-gray-400 font-light mb-4">
             Unable to connect to the session monitoring service.
           </p>
-          <Button onClick={() => refetch()} variant="outline">
+          <Button onClick={() => refetch()} variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
             <IconRefresh className="size-4 mr-2" />
             Retry
           </Button>
@@ -158,7 +162,7 @@ export function SessionListView() {
             placeholder="Search sessions by ID, user, or error message..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700"
           />
         </div>
         
@@ -169,10 +173,10 @@ export function SessionListView() {
               hasErrors: value === "all" ? undefined : value === "true" 
             }))
           }>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700">
               <SelectValue placeholder="All Sessions" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
               <SelectItem value="all">All Sessions</SelectItem>
               <SelectItem value="true">With Errors</SelectItem>
               <SelectItem value="false">No Errors</SelectItem>
@@ -185,10 +189,10 @@ export function SessionListView() {
               dateRange: value === "all" ? undefined : value 
             }))
           }>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-32 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700">
               <SelectValue placeholder="All Time" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
               <SelectItem value="all">All Time</SelectItem>
               <SelectItem value="24h">Last 24h</SelectItem>
               <SelectItem value="7d">Last 7d</SelectItem>
@@ -197,7 +201,7 @@ export function SessionListView() {
           </Select>
 
           {hasActiveFilters && (
-            <Button variant="outline" size="sm" onClick={clearFilters}>
+            <Button variant="outline" size="sm" onClick={clearFilters} className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
               <IconX className="size-4 mr-1" />
               Clear
             </Button>
@@ -208,11 +212,11 @@ export function SessionListView() {
       {/* Session Stats and Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Badge variant="outline">
+          <Badge variant="outline" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-light">
             {data?.total || 0} total sessions
           </Badge>
           {sessions.length !== (data?.total || 0) && (
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm font-light">
               {sessions.length} filtered
             </Badge>
           )}
@@ -222,12 +226,13 @@ export function SessionListView() {
               variant="ghost"
               size="sm"
               disabled={isFetching}
+              className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm hover:bg-white/40 dark:hover:bg-gray-800/40 font-normal"
             >
               <IconRefresh className={`size-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               {isFetching ? 'Updating...' : 'Refresh'}
             </Button>
             {isFetching && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm font-light">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1" />
                 Live
               </Badge>
@@ -240,17 +245,19 @@ export function SessionListView() {
             <Button
               variant="outline"
               size="sm"
+              className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal"
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
             >
               <IconChevronLeft className="size-4" />
             </Button>
-            <span className="text-sm text-muted-foreground px-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400 font-light px-2">
               Page {page} of {totalPages}
             </span>
             <Button
               variant="outline"
               size="sm"
+              className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal"
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
             >
@@ -265,28 +272,28 @@ export function SessionListView() {
         {sessions.map((session) => (
           <Card 
             key={session.session_id} 
-            className="hover:shadow-md transition-shadow"
+            className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/40 dark:hover:bg-gray-800/40"
           >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className="text-xs font-mono">
+                    <Badge variant="outline" className="text-xs font-mono bg-gray-50/50 dark:bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 backdrop-blur-sm">
                       {session.session_id.slice(0, 8)}...
                     </Badge>
                     {session.error_count > 0 && (
-                      <Badge variant="destructive" className="text-xs">
+                      <Badge variant="destructive" className="text-xs bg-red-500/20 dark:bg-red-500/20 backdrop-blur-sm border-red-200 dark:border-red-700">
                         {session.error_count} error{session.error_count > 1 ? 's' : ''}
                       </Badge>
                     )}
                     {session.user_id && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs bg-blue-50/50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 backdrop-blur-sm">
                         User
                       </Badge>
                     )}
                   </div>
                   
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+                  <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 font-light mb-2">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-1">
                         <IconCalendar className="size-3" />
@@ -307,14 +314,14 @@ export function SessionListView() {
                   </div>
 
                   {session.last_error && (
-                    <div className="text-sm text-destructive bg-destructive/10 p-2 rounded mt-2 break-words">
+                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50/30 dark:bg-red-500/10 p-2 rounded mt-2 break-words backdrop-blur-sm">
                       <span className="font-medium">Last Error: </span>
                       {session.last_error}
                     </div>
                   )}
 
                   <div className="flex items-center justify-between mt-3">
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400 font-light">
                       <span>{session.event_count} events</span>
                       {session.user_agent && (
                         <span className="truncate max-w-xs">
@@ -325,7 +332,7 @@ export function SessionListView() {
                     
                     <Link
                       href={`/dashboard/sessions/${session.session_id}`}
-                      className="text-primary hover:underline text-sm"
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline text-sm font-normal"
                     >
                       View Timeline →
                     </Link>
@@ -337,20 +344,20 @@ export function SessionListView() {
         ))}
         
         {sessions.length === 0 && (
-          <Card>
+          <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="py-12 text-center">
-              <IconUser className="size-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
+              <IconUser className="size-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <h3 className="text-lg font-normal mb-2 text-gray-800 dark:text-gray-200">
                 {hasActiveFilters ? 'No sessions match your filters' : 'No sessions found'}
               </h3>
-              <p className="text-muted-foreground mb-4">
+              <p className="text-gray-600 dark:text-gray-400 font-light mb-4">
                 {hasActiveFilters 
                   ? 'Try adjusting your search criteria or filters.'
                   : 'User sessions will appear here once your application starts sending data.'
                 }
               </p>
               {hasActiveFilters && (
-                <Button onClick={clearFilters} variant="outline">
+                <Button onClick={clearFilters} variant="outline" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
                   Clear filters
                 </Button>
               )}

@@ -1,6 +1,5 @@
 import { api, Query } from "encore.dev/api";
 import { db } from "./db";
-import { parseUserAgent, groupBrowserForAnalytics, groupOSForAnalytics } from "./user-agent-parser";
 import { cacheManager } from "../cache/redis-cache";
 
 export interface ProjectStatsParams {
@@ -30,6 +29,16 @@ export interface ProjectStats {
   osDistribution: Array<{
     os: string;
     version?: string;
+    count: number;
+    percentage: number;
+  }>;
+  deviceTypeDistribution: Array<{
+    deviceType: string;
+    count: number;
+    percentage: number;
+  }>;
+  screenResolutionDistribution: Array<{
+    resolution: string;
     count: number;
     percentage: number;
   }>;
@@ -236,55 +245,124 @@ async function calculateProjectStats(projectId: number, days: number): Promise<P
       percentage: totalErrors > 0 ? Math.round((row.count / totalErrors) * 100 * 100) / 100 : 0
     }));
     
-    // Get browser distribution from user agents
-    const browserDataResult = await db.queryAll<{ user_agent: string; count: number }>`
+    // Get device analytics data (browser, OS, device type, screen resolution)
+    const deviceAnalyticsResult = await db.queryAll<{
+      browser_name: string;
+      browser_version: string;
+      os_name: string;
+      os_version: string;
+      device_type: string;
+      screen_resolution: string;
+      total_sessions: number;
+      total_errors: number;
+    }>`
       SELECT 
-        user_agent,
-        COUNT(*) as count
-      FROM errors
+        browser_name,
+        browser_version,
+        os_name,
+        os_version,
+        device_type,
+        screen_resolution,
+        total_sessions,
+        total_errors
+      FROM device_analytics
       WHERE project_id = ${projectId}
-      AND timestamp >= ${startDate}
-      AND timestamp <= ${endDate}
-      AND user_agent IS NOT NULL
-      AND user_agent != ''
-      GROUP BY user_agent
-      ORDER BY count DESC
-      LIMIT 50
+      AND last_seen >= ${startDate}
+      AND last_seen <= ${endDate}
+      AND browser_name IS NOT NULL
+      AND browser_name != ''
+      ORDER BY total_sessions DESC
     `;
     
-    const browserMap = new Map<string, number>();
-    const osMap = new Map<string, number>();
+    // Aggregate browser distribution
+    const browserMap = new Map<string, { count: number; totalSessions: number }>();
+    const osMap = new Map<string, { count: number; totalSessions: number }>();
+    const deviceTypeMap = new Map<string, { count: number; totalSessions: number }>();
+    const screenResolutionMap = new Map<string, { count: number; totalSessions: number }>();
     
-    browserDataResult.forEach(row => {
-      const parsed = parseUserAgent(row.user_agent);
-      const browserKey = groupBrowserForAnalytics(parsed.browser, parsed.browserVersion);
-      const osKey = groupOSForAnalytics(parsed.os, parsed.osVersion);
+    deviceAnalyticsResult.forEach(row => {
+      // Group browser versions (e.g., Chrome 120.0.0 -> Chrome 120)
+      const browserVersion = row.browser_version ? row.browser_version.split('.')[0] : '';
+      const browserKey = browserVersion ? `${row.browser_name} ${browserVersion}` : row.browser_name;
       
-      browserMap.set(browserKey, (browserMap.get(browserKey) || 0) + row.count);
-      osMap.set(osKey, (osMap.get(osKey) || 0) + row.count);
+      // Group OS versions (e.g., macOS 14.2.1 -> macOS 14)
+      const osVersion = row.os_version ? row.os_version.split('.')[0] : '';
+      const osKey = osVersion ? `${row.os_name} ${osVersion}` : row.os_name;
+      
+      // Device type and screen resolution
+      const deviceTypeKey = row.device_type || 'unknown';
+      const screenResKey = row.screen_resolution || 'unknown';
+      
+      // Update maps with session counts (more accurate than error counts)
+      const sessions = row.total_sessions || 1;
+      
+      const currentBrowser = browserMap.get(browserKey) || { count: 0, totalSessions: 0 };
+      browserMap.set(browserKey, { 
+        count: currentBrowser.count + 1, 
+        totalSessions: currentBrowser.totalSessions + sessions 
+      });
+      
+      const currentOS = osMap.get(osKey) || { count: 0, totalSessions: 0 };
+      osMap.set(osKey, { 
+        count: currentOS.count + 1, 
+        totalSessions: currentOS.totalSessions + sessions 
+      });
+      
+      const currentDeviceType = deviceTypeMap.get(deviceTypeKey) || { count: 0, totalSessions: 0 };
+      deviceTypeMap.set(deviceTypeKey, { 
+        count: currentDeviceType.count + 1, 
+        totalSessions: currentDeviceType.totalSessions + sessions 
+      });
+      
+      const currentScreenRes = screenResolutionMap.get(screenResKey) || { count: 0, totalSessions: 0 };
+      screenResolutionMap.set(screenResKey, { 
+        count: currentScreenRes.count + 1, 
+        totalSessions: currentScreenRes.totalSessions + sessions 
+      });
     });
     
-    const totalBrowsers = Array.from(browserMap.values()).reduce((sum, count) => sum + count, 0);
-    const totalOS = Array.from(osMap.values()).reduce((sum, count) => sum + count, 0);
+    // Calculate totals for percentage calculations
+    const totalBrowserSessions = Array.from(browserMap.values()).reduce((sum, item) => sum + item.totalSessions, 0);
+    const totalOSSessions = Array.from(osMap.values()).reduce((sum, item) => sum + item.totalSessions, 0);
+    const totalDeviceTypeSessions = Array.from(deviceTypeMap.values()).reduce((sum, item) => sum + item.totalSessions, 0);
+    const totalScreenResSessions = Array.from(screenResolutionMap.values()).reduce((sum, item) => sum + item.totalSessions, 0);
     
+    // Build distribution arrays
     const browserDistribution = Array.from(browserMap.entries())
-      .sort(([, a], [, b]) => b - a)
+      .sort(([, a], [, b]) => b.totalSessions - a.totalSessions)
       .slice(0, 10)
-      .map(([browser, count]) => ({
+      .map(([browser, data]) => ({
         browser: browser.split(' ')[0], // Browser name
         version: browser.includes(' ') ? browser.split(' ')[1] : undefined,
-        count,
-        percentage: totalBrowsers > 0 ? Math.round((count / totalBrowsers) * 100 * 100) / 100 : 0
+        count: data.totalSessions,
+        percentage: totalBrowserSessions > 0 ? Math.round((data.totalSessions / totalBrowserSessions) * 100 * 100) / 100 : 0
       }));
     
     const osDistribution = Array.from(osMap.entries())
-      .sort(([, a], [, b]) => b - a)
+      .sort(([, a], [, b]) => b.totalSessions - a.totalSessions)
       .slice(0, 10)
-      .map(([os, count]) => ({
+      .map(([os, data]) => ({
         os: os.split(' ')[0], // OS name
         version: os.includes(' ') ? os.split(' ')[1] : undefined,
-        count,
-        percentage: totalOS > 0 ? Math.round((count / totalOS) * 100 * 100) / 100 : 0
+        count: data.totalSessions,
+        percentage: totalOSSessions > 0 ? Math.round((data.totalSessions / totalOSSessions) * 100 * 100) / 100 : 0
+      }));
+    
+    const deviceTypeDistribution = Array.from(deviceTypeMap.entries())
+      .sort(([, a], [, b]) => b.totalSessions - a.totalSessions)
+      .map(([deviceType, data]) => ({
+        deviceType: deviceType.charAt(0).toUpperCase() + deviceType.slice(1), // Capitalize
+        count: data.totalSessions,
+        percentage: totalDeviceTypeSessions > 0 ? Math.round((data.totalSessions / totalDeviceTypeSessions) * 100 * 100) / 100 : 0
+      }));
+    
+    const screenResolutionDistribution = Array.from(screenResolutionMap.entries())
+      .sort(([, a], [, b]) => b.totalSessions - a.totalSessions)
+      .slice(0, 8) // Top 8 resolutions
+      .map(([resolution, data]) => ({
+        resolution,
+        count: data.totalSessions,
+        percentage: totalScreenResSessions > 0 ? Math.round((data.totalSessions / totalScreenResSessions) * 100 * 100) / 100 : 0
       }));
     
     // Create error trend data (errors per day)
@@ -324,6 +402,8 @@ async function calculateProjectStats(projectId: number, days: number): Promise<P
       errorTrend: trendData,
       browserDistribution,
       osDistribution,
+      deviceTypeDistribution,
+      screenResolutionDistribution,
       topErrorPages,
       errorsByStatus
     };
@@ -370,7 +450,10 @@ export const getDatabaseStats = api<DatabaseStatsParams, DatabaseStatsResponse>(
     `;
     
     const totalSessionEvents = await db.queryRow<{ count: number }>`
-      SELECT COUNT(*) as count FROM session_events
+      SELECT (
+        (SELECT COUNT(*) FROM session_events) + 
+        (SELECT COUNT(*) FROM user_journey_events)
+      ) as count
     `;
     
     const totalNetworkEvents = await db.queryRow<{ count: number }>`
@@ -400,10 +483,18 @@ export const getDatabaseStats = api<DatabaseStatsParams, DatabaseStatsResponse>(
       `;
       
       const projectSessionEvents = await db.queryRow<{ count: number }>`
-        SELECT COUNT(*) as count 
-        FROM session_events se
-        JOIN sessions s ON se.session_id = s.session_id
-        WHERE s.project_id = ${params.project_id}
+        SELECT (
+          (
+            SELECT COUNT(*) 
+            FROM session_events se
+            JOIN sessions s ON se.session_id = s.session_id
+            WHERE s.project_id = ${params.project_id}
+          ) + (
+            SELECT COUNT(*)
+            FROM user_journey_events uje
+            WHERE uje.project_id = ${params.project_id}
+          )
+        ) as count
       `;
       
       const projectNetworkEvents = await db.queryRow<{ count: number }>`

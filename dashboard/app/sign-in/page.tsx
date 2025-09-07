@@ -14,20 +14,34 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
-
+import Image from "next/image";
 function SignInContent() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo");
 
   return (
-    <div className="flex flex-col justify-center items-center w-full h-screen">
-      <Card className="max-w-md w-full">
+    <div className="flex flex-col justify-center items-center w-fit h-fit py-4" style={{
+      width: '506px',
+      borderRadius: '20px',
+      background: 'rgba(255, 255, 255, 0.08)',
+      backdropFilter: 'blur(60px) saturate(180%)',
+      border: '1px solid rgba(255, 255, 255, 0.15)',
+      boxShadow: 'rgba(0, 0, 0, 0.3) 0px 8px 32px, rgba(0, 0, 0, 0.2) 0px 2px 16px, rgba(255, 255, 255, 0.2) 0px 1px 0px inset, rgba(255, 255, 255, 0.05) 0px -1px 0px inset',
+      // padding: '20px',
+      position: 'relative',
+      overflow: 'hidden',
+      cursor: 'text'
+    }}>
+      <Card
+        className="w-full bg-transparent border-0 shadow-none text-white"
+
+      >
         <CardHeader>
-          <CardTitle className="text-lg md:text-xl">
-            Welcome to Revi
+          <CardTitle className="text-lg md:text-3xl font-[500] mx-auto">
+            Sign in to continue
           </CardTitle>
-          <CardDescription className="text-xs md:text-sm">
+          <CardDescription className="text-xs md:text-sm mx-auto text-white">
             Sign in with Google to access your error monitoring dashboard
           </CardDescription>
         </CardHeader>
@@ -41,7 +55,7 @@ function SignInContent() {
             >
               <Button
                 variant="outline"
-                className={cn("w-full gap-2")}
+                className={cn("w-full gap-2 bg-white/20 border-none text-white h-12 hover:bg-neutral-950")}
                 disabled={loading}
                 onClick={async () => {
                   try {
@@ -103,23 +117,23 @@ function SignInContent() {
           </div>
         </CardContent>
       </Card>
-      <p className="mt-6 text-xs text-center text-gray-500 dark:text-gray-400 max-w-md">
+      <p className="mt-2 mb-6 text-xs text-center text-white max-w-md">
         By signing in, you agree to our{" "}
         <Link
           href="/terms-of-service"
-          className="underline hover:text-gray-700 dark:hover:text-gray-300"
+          className="underline text-purple-200 hover:text-gray-700 dark:hover:text-gray-300"
         >
           Terms of Service
         </Link>{" "}
         and{" "}
         <Link
           href="/privacy-policy"
-          className="underline hover:text-gray-700 dark:hover:text-gray-300"
+          className="underline text-purple-200 hover:text-gray-700 dark:hover:text-gray-300"
         >
           Privacy Policy
         </Link>
       </p>
-    </div>
+    </div >
   );
 }
 
@@ -128,11 +142,28 @@ export default function SignIn() {
     <Suspense
       fallback={
         <div className="flex flex-col justify-center items-center w-full h-screen">
-          <div className="max-w-md w-full bg-gray-200 dark:bg-gray-800 animate-pulse rounded-lg h-96"></div>
+          {/* <div className="max-w-md w-full bg-gray-200 dark:bg-gray-800 animate-pulse rounded-lg h-96"></div> */}
         </div>
       }
     >
-      <SignInContent />
+      <div className="flex flex-row w-full h-screen">
+        <div className="w-7/12 h-screen bg-black flex flex-col justify-center items-center text-white">
+          <div className="flex  bottom-18 relative">
+            <Image
+            src="/logo-white.png"
+            alt="Sign In Background"
+            width={170}
+            height={170}
+            className=""
+          />
+          <h1 className="text-[6rem] font-[600]">Revi</h1>
+          </div>
+          <p className="max-w-2xl text-center text-lg relative bottom-10 bg-gradient-to-r from-blue-100 via-gray-500 to-slate-300 bg-clip-text text-transparent mb-12 leading-relaxed">Open-source error monitoring and session replay that captures frontend errors and user interactions. See exactly what users experienced when errors occurred with complete session playback.</p>
+        </div>
+        <div className="w-5/12 h-screen flex items-center justify-center bg-[#1A1D20]">
+          <SignInContent />
+        </div>
+      </div>
     </Suspense>
   );
 }

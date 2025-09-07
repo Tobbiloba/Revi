@@ -43,10 +43,10 @@ export function SectionCards({ projectId }: SectionCardsProps = {}) {
     return (
       <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
+          <Card key={i} className="animate-pulse bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader>
-              <CardDescription className="h-4 bg-muted rounded w-24" />
-              <CardTitle className="h-8 bg-muted rounded w-16" />
+              <CardDescription className="h-4 bg-gray-200/50 dark:bg-gray-700/50 rounded w-24" />
+              <CardTitle className="h-8 bg-gray-200/50 dark:bg-gray-700/50 rounded w-16" />
             </CardHeader>
           </Card>
         ))}
@@ -57,10 +57,10 @@ export function SectionCards({ projectId }: SectionCardsProps = {}) {
   if (error) {
     return (
       <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        <Card>
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader>
-            <CardDescription>Connection Error</CardDescription>
-            <CardTitle className="text-destructive">Failed to load data</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Connection Error</CardDescription>
+            <CardTitle className="text-red-600 dark:text-red-400 font-normal">Failed to load data</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -79,94 +79,94 @@ export function SectionCards({ projectId }: SectionCardsProps = {}) {
   
   return (
     <div className="space-y-4">
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      <Card className="@container/card">
+      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      <Card className="@container/card bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardDescription>Total Errors</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Total Errors</CardDescription>
+          <CardTitle className="text-2xl font-light tabular-nums @[250px]/card:text-3xl text-gray-800 dark:text-gray-200">
             {totalErrors.toLocaleString()}
           </CardTitle>
           <CardAction>
-            <Badge variant={errorTrend === 'up' ? 'destructive' : errorTrend === 'down' ? 'default' : 'secondary'}>
+            <Badge variant={errorTrend === 'up' ? 'destructive' : errorTrend === 'down' ? 'default' : 'secondary'} className="border-0 font-light">
               {errorTrend === 'up' ? <IconTrendingUp /> : errorTrend === 'down' ? <IconTrendingDown /> : <IconActivity />}
               {errorTrend === 'up' ? '+' : errorTrend === 'down' ? '-' : ''}{errorRate.toFixed(1)}/day
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
+          <div className="line-clamp-1 flex gap-2 font-normal text-gray-700 dark:text-gray-300">
             <IconAlertCircle className="size-4" />
             {totalErrors > 0 ? 'Errors detected this week' : 'No errors this week'}
           </div>
-          <div className="text-muted-foreground">
+          <div className="text-gray-600 dark:text-gray-400 font-light">
             Last 7 days activity
           </div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+      <Card className="@container/card bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardDescription>Active Sessions</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Active Sessions</CardDescription>
+          <CardTitle className="text-2xl font-light tabular-nums @[250px]/card:text-3xl text-gray-800 dark:text-gray-200">
             {activeSessions.toLocaleString()}
           </CardTitle>
           <CardAction>
-            <Badge variant="outline">
+            <Badge variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-light">
               {sessionTrend === 'up' ? <IconTrendingUp /> : <IconActivity />}
               {activeSessions} unique
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
+          <div className="line-clamp-1 flex gap-2 font-normal text-gray-700 dark:text-gray-300">
             <IconUsers className="size-4" />
             User sessions tracked
           </div>
-          <div className="text-muted-foreground">
+          <div className="text-gray-600 dark:text-gray-400 font-light">
             Unique user interactions
           </div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+      <Card className="@container/card bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardDescription>Top Error</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Top Error</CardDescription>
+          <CardTitle className="text-2xl font-light tabular-nums @[250px]/card:text-3xl text-gray-800 dark:text-gray-200">
             {projectStats?.topErrors?.[0]?.count || 0}
           </CardTitle>
           <CardAction>
-            <Badge variant="outline">
+            <Badge variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-light">
               <IconAlertCircle />
               Most frequent
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
+          <div className="line-clamp-1 flex gap-2 font-normal text-gray-700 dark:text-gray-300">
             {projectStats?.topErrors?.[0]?.message?.slice(0, 30) || 'No errors'}
             {projectStats?.topErrors?.[0]?.message && projectStats.topErrors[0].message.length > 30 && '...'}
           </div>
-          <div className="text-muted-foreground">
+          <div className="text-gray-600 dark:text-gray-400 font-light">
             Most common error type
           </div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+      <Card className="@container/card bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardDescription>Latest Activity</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Latest Activity</CardDescription>
+          <CardTitle className="text-2xl font-light tabular-nums @[250px]/card:text-3xl text-gray-800 dark:text-gray-200">
             {errors.length > 0 ? new Date(errors[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
           </CardTitle>
           <CardAction>
-            <Badge variant="outline">
+            <Badge variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-light">
               <IconClock />
               Recent
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
+          <div className="line-clamp-1 flex gap-2 font-normal text-gray-700 dark:text-gray-300">
             {errors.length > 0 ? 'Latest error detected' : 'No recent activity'}
           </div>
-          <div className="text-muted-foreground">
+          <div className="text-gray-600 dark:text-gray-400 font-light">
             Real-time monitoring
           </div>
         </CardFooter>

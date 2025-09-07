@@ -156,13 +156,13 @@ const LazyChartWrapper = ({ children, fallback, className }: LazyChartWrapperPro
         children
       ) : (
         fallback || (
-          <Card className="animate-pulse">
+          <Card className="animate-pulse bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader>
-              <div className="h-6 bg-muted rounded w-32 mb-2" />
-              <div className="h-4 bg-muted rounded w-48" />
+              <div className="h-6 bg-gray-200/50 dark:bg-gray-700/50 rounded w-32 mb-2" />
+              <div className="h-4 bg-gray-200/50 dark:bg-gray-700/50 rounded w-48" />
             </CardHeader>
             <CardContent>
-              <div className="h-64 bg-muted rounded" />
+              <div className="h-64 bg-gray-200/50 dark:bg-gray-700/50 rounded" />
             </CardContent>
           </Card>
         )
@@ -176,14 +176,16 @@ interface BrowserDistributionChartProps {
 }
 
 const BrowserDistributionChart = React.memo(({ data }: BrowserDistributionChartProps) => (
-  <Card>
+  <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
     <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <IconBrowser className="size-5" />
+      <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-normal">
+        <div className="p-2 rounded-lg bg-blue-500/10">
+          <IconBrowser className="size-5 text-blue-600 dark:text-blue-400" />
+        </div>
         Browser Distribution
       </CardTitle>
-      <CardDescription>
-        Errors by browser type ({data.length > 0 ? data.reduce((sum, item) => sum + item.value, 0) : 0} total)
+      <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
+        Sessions by browser type ({data.length > 0 ? data.reduce((sum, item) => sum + item.value, 0) : 0} total)
       </CardDescription>
     </CardHeader>
     <CardContent>
@@ -218,14 +220,16 @@ interface OSDistributionChartProps {
 }
 
 const OSDistributionChart = React.memo(({ data }: OSDistributionChartProps) => (
-  <Card>
+  <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
     <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <IconDeviceMobile className="size-5" />
+      <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-normal">
+        <div className="p-2 rounded-lg bg-green-500/10">
+          <IconDeviceMobile className="size-5 text-green-600 dark:text-green-400" />
+        </div>
         Operating System
       </CardTitle>
-      <CardDescription>
-        Errors by operating system ({data.length > 0 ? data.reduce((sum, item) => sum + item.value, 0) : 0} total)
+      <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
+        Sessions by operating system ({data.length > 0 ? data.reduce((sum, item) => sum + item.value, 0) : 0} total)
       </CardDescription>
     </CardHeader>
     <CardContent>
@@ -255,18 +259,104 @@ const OSDistributionChart = React.memo(({ data }: OSDistributionChartProps) => (
 ));
 OSDistributionChart.displayName = 'OSDistributionChart';
 
+interface DeviceTypeDistributionChartProps {
+  data: ChartData[];
+}
+
+const DeviceTypeDistributionChart = React.memo(({ data }: DeviceTypeDistributionChartProps) => (
+  <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-normal">
+        <div className="p-2 rounded-lg bg-purple-500/10">
+          <IconDeviceMobile className="size-5 text-purple-600 dark:text-purple-400" />
+        </div>
+        Device Type
+      </CardTitle>
+      <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
+        Sessions by device type ({data.length > 0 ? data.reduce((sum, item) => sum + item.value, 0) : 0} total)
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={40}
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="value"
+              label={({ name, percentage }) => `${name} ${percentage?.toFixed(1)}%`}
+            >
+              {data.map((entry, index) => (
+                <Cell key={`device-cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(value, name) => [value, name]} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </CardContent>
+  </Card>
+));
+DeviceTypeDistributionChart.displayName = 'DeviceTypeDistributionChart';
+
+interface ScreenResolutionChartProps {
+  data: ChartData[];
+}
+
+const ScreenResolutionChart = React.memo(({ data }: ScreenResolutionChartProps) => (
+  <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-normal">
+        <div className="p-2 rounded-lg bg-amber-500/10">
+          <IconDeviceMobile className="size-5 text-amber-600 dark:text-amber-400" />
+        </div>
+        Screen Resolution
+      </CardTitle>
+      <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
+        Top screen resolutions ({data.length > 0 ? data.reduce((sum, item) => sum + item.value, 0) : 0} sessions)
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        {data.length > 0 ? data.slice(0, 6).map((resolution, index) => (
+          <div key={index} className="flex items-center justify-between p-3 bg-white/20 dark:bg-gray-700/20 rounded-lg">
+            <div className="flex-1 min-w-0">
+              <p className="font-normal text-sm text-gray-800 dark:text-gray-200">{resolution.name}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-light">
+                {resolution.value} sessions ({resolution.percentage?.toFixed(1)}%)
+              </p>
+            </div>
+            <Badge variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-light">#{index + 1}</Badge>
+          </div>
+        )) : (
+          <div className="text-center py-8 text-gray-600 dark:text-gray-400 font-light">
+            No resolution data available.
+          </div>
+        )}
+      </div>
+    </CardContent>
+  </Card>
+));
+ScreenResolutionChart.displayName = 'ScreenResolutionChart';
+
 interface ErrorStatusChartProps {
   data: ChartData[];
 }
 
 const ErrorStatusChart = React.memo(({ data }: ErrorStatusChartProps) => (
-  <Card>
+  <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
     <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <IconAlertCircle className="size-5" />
+      <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-normal">
+        <div className="p-2 rounded-lg bg-red-500/10">
+          <IconAlertCircle className="size-5 text-red-600 dark:text-red-400" />
+        </div>
         Error Status
       </CardTitle>
-      <CardDescription>
+      <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
         Current error resolution status
       </CardDescription>
     </CardHeader>
@@ -307,62 +397,62 @@ const KeyMetricsSection = React.memo(({
   errorsByStatus 
 }: KeyMetricsSectionProps) => (
   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-    <Card>
+    <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
       <CardHeader className="pb-3">
-        <CardDescription>Unique Users</CardDescription>
-        <CardTitle className="text-2xl font-semibold">
+        <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Unique Users</CardDescription>
+        <CardTitle className="text-2xl font-light text-gray-800 dark:text-gray-200">
           {uniqueUsers?.toLocaleString() || 0}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-light">
           <IconUsers className="size-4" />
           <span>Active users tracked</span>
         </div>
       </CardContent>
     </Card>
 
-    <Card>
+    <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
       <CardHeader className="pb-3">
-        <CardDescription>Avg. Session Duration</CardDescription>
-        <CardTitle className="text-2xl font-semibold">
+        <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Avg. Session Duration</CardDescription>
+        <CardTitle className="text-2xl font-light text-gray-800 dark:text-gray-200">
           {averageSessionDuration ? 
             `${Math.round(averageSessionDuration / 60)}m` : '0m'}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-light">
           <IconClock className="size-4" />
           <span>Average user session</span>
         </div>
       </CardContent>
     </Card>
 
-    <Card>
+    <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
       <CardHeader className="pb-3">
-        <CardDescription>Error Rate</CardDescription>
-        <CardTitle className="text-2xl font-semibold">
+        <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Error Rate</CardDescription>
+        <CardTitle className="text-2xl font-light text-gray-800 dark:text-gray-200">
           {(errorRate || 0).toFixed(1)}/day
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-light">
           <IconAlertCircle className="size-4" />
           <span>Daily error occurrence</span>
         </div>
       </CardContent>
     </Card>
 
-    <Card>
+    <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
       <CardHeader className="pb-3">
-        <CardDescription>Resolution Rate</CardDescription>
-        <CardTitle className="text-2xl font-semibold">
+        <CardDescription className="text-gray-600 dark:text-gray-400 font-light">Resolution Rate</CardDescription>
+        <CardTitle className="text-2xl font-light text-gray-800 dark:text-gray-200">
           {totalErrors > 0 ? 
             Math.round((errorsByStatus?.resolved || 0) / totalErrors * 100) : 0}%
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-light">
           <IconAlertCircle className="size-4" />
           <span>Errors resolved</span>
         </div>
@@ -428,6 +518,28 @@ export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) 
     return sampleAndAggregateData(filterLowValueItems(rawData));
   }, [stats?.osDistribution]);
 
+  const deviceTypeData = useMemo(() => {
+    if (!stats?.deviceTypeDistribution) return [];
+    const rawData = stats.deviceTypeDistribution.map(item => ({
+      name: item.deviceType,
+      value: item.count,
+      percentage: item.percentage,
+    }));
+    
+    return sampleAndAggregateData(filterLowValueItems(rawData));
+  }, [stats?.deviceTypeDistribution]);
+
+  const screenResolutionData = useMemo(() => {
+    if (!stats?.screenResolutionDistribution) return [];
+    const rawData = stats.screenResolutionDistribution.map(item => ({
+      name: item.resolution,
+      value: item.count,
+      percentage: item.percentage,
+    }));
+    
+    return sampleAndAggregateData(filterLowValueItems(rawData));
+  }, [stats?.screenResolutionDistribution]);
+
   const statusData = useMemo(() => 
     Object.entries(stats?.errorsByStatus || {}).map(([status, count]) => ({
       name: status.charAt(0).toUpperCase() + status.slice(1),
@@ -445,13 +557,13 @@ export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {[...Array(6)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
+          <Card key={i} className="animate-pulse bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader>
-              <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-              <div className="h-3 bg-muted rounded w-1/2" />
+              <div className="h-4 bg-gray-200/50 dark:bg-gray-700/50 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-gray-200/50 dark:bg-gray-700/50 rounded w-1/2" />
             </CardHeader>
             <CardContent>
-              <div className="h-48 bg-muted rounded" />
+              <div className="h-48 bg-gray-200/50 dark:bg-gray-700/50 rounded" />
             </CardContent>
           </Card>
         ))}
@@ -461,18 +573,18 @@ export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) 
 
   if (error || !stats) {
     return (
-      <Card>
+      <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2">
+          <CardTitle className="text-red-600 dark:text-red-400 font-normal flex items-center gap-2">
             <IconAlertCircle className="size-5" />
             Failed to load analytics
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-gray-600 dark:text-gray-400 font-light mb-4">
             Unable to load analytics data. Please try refreshing.
           </p>
-          <Button onClick={() => refetch()} variant="outline">
+          <Button onClick={() => refetch()} variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
             <IconRefresh className="size-4 mr-2" />
             Retry
           </Button>
@@ -485,14 +597,14 @@ export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Analytics Dashboard</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-light tracking-tight text-gray-800 dark:text-gray-200">Analytics Dashboard</h2>
+          <p className="text-gray-600 dark:text-gray-400 font-light">
             Comprehensive insights into errors, user behavior, and system performance.
           </p>
         </div>
         
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-40 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700">
             <SelectValue placeholder="Select time range" />
           </SelectTrigger>
           <SelectContent>
@@ -513,7 +625,7 @@ export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) 
       />
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Browser Distribution */}
         <LazyChartWrapper>
           <BrowserDistributionChart data={browserData} />
@@ -524,33 +636,43 @@ export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) 
           <OSDistributionChart data={osData} />
         </LazyChartWrapper>
 
+        {/* Device Type Distribution */}
+        <LazyChartWrapper>
+          <DeviceTypeDistributionChart data={deviceTypeData} />
+        </LazyChartWrapper>
+
         {/* Error Status Distribution */}
         <LazyChartWrapper>
           <ErrorStatusChart data={statusData} />
         </LazyChartWrapper>
 
+        {/* Screen Resolution Distribution */}
+        <LazyChartWrapper className="xl:col-span-2">
+          <ScreenResolutionChart data={screenResolutionData} />
+        </LazyChartWrapper>
+
         {/* Top Error Pages */}
-        <Card className="lg:col-span-2">
+        <Card className="xl:col-span-2 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader>
-            <CardTitle>Top Error Pages</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-gray-800 dark:text-gray-200 font-normal">Top Error Pages</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
               Pages with the most errors in the selected time range
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {topPages.length > 0 ? topPages.map((page, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-3 bg-white/20 dark:bg-gray-700/20 rounded-lg">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{page.url}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-normal text-sm truncate text-gray-800 dark:text-gray-200">{page.url}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 font-light">
                       {page.count} errors ({page.percentage.toFixed(1)}% of total)
                     </p>
                   </div>
-                  <Badge variant="outline">#{index + 1}</Badge>
+                  <Badge variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-light">#{index + 1}</Badge>
                 </div>
               )) : (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-8 text-gray-600 dark:text-gray-400 font-light">
                   No error page data available for this time range.
                 </div>
               )}
@@ -559,10 +681,10 @@ export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) 
         </Card>
 
         {/* Top Errors */}
-        <Card>
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader>
-            <CardTitle>Most Frequent Errors</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-gray-800 dark:text-gray-200 font-normal">Most Frequent Errors</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
               Common error messages and their occurrence count
             </CardDescription>
           </CardHeader>
@@ -571,21 +693,21 @@ export function AnalyticsDashboard({ projectId }: AnalyticsDashboardProps = {}) 
               {stats.topErrors?.slice(0, 5).map((error, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">#{index + 1}</span>
-                    <Badge variant="destructive" className="text-xs">
+                    <span className="text-sm font-normal text-gray-700 dark:text-gray-300">#{index + 1}</span>
+                    <Badge variant="destructive" className="text-xs border-0 font-light">
                       {error.count}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-light line-clamp-2">
                     {error.message}
                   </p>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 font-light">
                     Last seen: {new Date(error.lastSeen).toLocaleDateString()}
                   </div>
-                  {index < 4 && <hr className="border-muted" />}
+                  {index < 4 && <hr className="border-gray-200/50 dark:border-gray-700/50" />}
                 </div>
               )) || (
-                <div className="text-center py-4 text-muted-foreground">
+                <div className="text-center py-4 text-gray-600 dark:text-gray-400 font-light">
                   No error data available.
                 </div>
               )}

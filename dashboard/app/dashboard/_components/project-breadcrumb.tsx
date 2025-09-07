@@ -37,9 +37,9 @@ export function ProjectBreadcrumb() {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 mb-4">
-        <Skeleton className="h-4 w-20" />
-        <span className="text-muted-foreground">/</span>
-        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-20 bg-gray-200/50 dark:bg-gray-700/50" />
+        <span className="text-gray-600 dark:text-gray-400 font-light">/</span>
+        <Skeleton className="h-4 w-16 bg-gray-200/50 dark:bg-gray-700/50" />
       </div>
     );
   }
@@ -49,21 +49,21 @@ export function ProjectBreadcrumb() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+            <BreadcrumbLink href="/dashboard" className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-light">Dashboard</BreadcrumbLink>
           </BreadcrumbItem>
-          <BreadcrumbSeparator />
+          <BreadcrumbSeparator className="text-gray-400 dark:text-gray-600" />
           <BreadcrumbItem>
-            <BreadcrumbLink href="/dashboard/projects">Projects</BreadcrumbLink>
+            <BreadcrumbLink href="/dashboard/projects" className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-light">Projects</BreadcrumbLink>
           </BreadcrumbItem>
-          <BreadcrumbSeparator />
+          <BreadcrumbSeparator className="text-gray-400 dark:text-gray-600" />
           <BreadcrumbItem>
-            <BreadcrumbPage className="font-medium">
+            <BreadcrumbPage className="font-normal text-gray-800 dark:text-gray-200">
               {currentProject?.name || `Project ${currentProjectId}`}
             </BreadcrumbPage>
           </BreadcrumbItem>
-          <BreadcrumbSeparator />
+          <BreadcrumbSeparator className="text-gray-400 dark:text-gray-600" />
           <BreadcrumbItem>
-            <BreadcrumbPage className="text-muted-foreground">
+            <BreadcrumbPage className="text-gray-600 dark:text-gray-400 font-light">
               {getPageName()}
             </BreadcrumbPage>
           </BreadcrumbItem>

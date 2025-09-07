@@ -84,63 +84,65 @@ export function CreateProjectForm() {
   if (createdProject) {
     return (
       <div className="space-y-6">
-        <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/50">
+        <Card className="bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800 backdrop-blur-sm shadow-lg">
           <CardHeader className="text-center">
             <div className="mx-auto w-12 h-12 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mb-4">
               <IconRocket className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
-            <CardTitle className="text-green-800 dark:text-green-200">
+            <CardTitle className="text-green-800 dark:text-green-200 font-normal">
               Project Created Successfully!
             </CardTitle>
-            <CardDescription className="text-green-700 dark:text-green-300">
+            <CardDescription className="text-green-700 dark:text-green-300 font-light">
               Your new monitoring project is ready to use
             </CardDescription>
           </CardHeader>
         </Card>
 
-        <Card>
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <IconKey className="h-5 w-5" />
-              Project Details
+            <CardTitle className="flex items-center gap-3 text-xl font-normal">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <IconKey className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="text-gray-800 dark:text-gray-200">Project Details</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-sm font-medium">Project Name</Label>
+              <Label className="text-sm font-normal text-gray-700 dark:text-gray-300">Project Name</Label>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-lg font-semibold">{createdProject.name}</span>
-                <Badge variant="secondary">ID: {createdProject.id}</Badge>
+                <span className="text-lg font-light text-gray-800 dark:text-gray-200">{createdProject.name}</span>
+                <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/30 text-gray-700 dark:text-gray-300 border-0 font-light">ID: {createdProject.id}</Badge>
               </div>
               {description && (
-                <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-light mt-1">{description}</p>
               )}
             </div>
 
             <Separator />
 
             <div>
-              <Label className="text-sm font-medium">API Key</Label>
-              <p className="text-xs text-muted-foreground mb-2">
+              <Label className="text-sm font-normal text-gray-700 dark:text-gray-300">API Key</Label>
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-light mb-2">
                 Use this key to configure the Revi SDK in your application
               </p>
               <div className="flex items-center gap-2">
                 <Input
                   value={createdProject.api_key}
                   readOnly
-                  className="font-mono text-sm"
+                  className="font-mono text-sm bg-white/20 dark:bg-gray-700/20 border-gray-200 dark:border-gray-700"
                   type="password"
                 />
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={copyApiKey}
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors"
                 >
                   {copiedApiKey ? (
-                    <IconCheck className="h-4 w-4" />
+                    <IconCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <IconCopy className="h-4 w-4" />
+                    <IconCopy className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                   )}
                 </Button>
               </div>
@@ -149,20 +151,20 @@ export function CreateProjectForm() {
             <Separator />
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button onClick={goToProject} className="flex-1">
+              <Button onClick={goToProject} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-0 font-normal">
                 <IconRocket className="h-4 w-4 mr-2" />
                 Go to Project Dashboard
               </Button>
-              <Button onClick={goToDashboard} variant="outline" className="flex-1">
+              <Button onClick={goToDashboard} variant="outline" className="flex-1 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
                 Back to Dashboard
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-50/50 border-blue-200 dark:bg-blue-950/50 dark:border-blue-800">
+        <Card className="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 backdrop-blur-sm shadow-lg">
           <CardHeader>
-            <CardTitle className="text-blue-800 dark:text-blue-200 text-lg">
+            <CardTitle className="text-blue-800 dark:text-blue-200 text-lg font-normal">
               Next Steps
             </CardTitle>
           </CardHeader>
@@ -172,8 +174,8 @@ export function CreateProjectForm() {
                 <span className="text-xs font-medium text-blue-600 dark:text-blue-400">1</span>
               </div>
               <div>
-                <p className="font-medium">Install the Revi SDK</p>
-                <p className="text-sm">Add error monitoring to your application</p>
+                <p className="font-normal">Install the Revi SDK</p>
+                <p className="text-sm font-light">Add error monitoring to your application</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -181,8 +183,8 @@ export function CreateProjectForm() {
                 <span className="text-xs font-medium text-blue-600 dark:text-blue-400">2</span>
               </div>
               <div>
-                <p className="font-medium">Configure with your API key</p>
-                <p className="text-sm">Use the key above to connect your app</p>
+                <p className="font-normal">Configure with your API key</p>
+                <p className="text-sm font-light">Use the key above to connect your app</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -190,8 +192,8 @@ export function CreateProjectForm() {
                 <span className="text-xs font-medium text-blue-600 dark:text-blue-400">3</span>
               </div>
               <div>
-                <p className="font-medium">Start monitoring</p>
-                <p className="text-sm">View errors and session replays in your dashboard</p>
+                <p className="font-normal">Start monitoring</p>
+                <p className="text-sm font-light">View errors and session replays in your dashboard</p>
               </div>
             </div>
           </CardContent>
@@ -203,17 +205,17 @@ export function CreateProjectForm() {
   // Form state
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
           <div className="flex items-center gap-3">
             <Link href="/dashboard/projects">
-              <Button variant="ghost" size="sm">
-                <IconArrowLeft className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="hover:bg-gray-100 dark:hover:bg-gray-700/20">
+                <IconArrowLeft className="h-4 w-4 text-gray-600 dark:text-gray-400" />
               </Button>
             </Link>
             <div>
-              <CardTitle>Project Information</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-gray-800 dark:text-gray-200 font-normal">Project Information</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
                 Provide basic information about your monitoring project
               </CardDescription>
             </div>
@@ -222,8 +224,8 @@ export function CreateProjectForm() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Project Name <span className="text-destructive">*</span>
+              <Label htmlFor="name" className="text-gray-700 dark:text-gray-300 font-normal">
+                Project Name <span className="text-red-600 dark:text-red-400">*</span>
               </Label>
               <Input
                 id="name"
@@ -233,14 +235,15 @@ export function CreateProjectForm() {
                 disabled={createProjectMutation.isPending}
                 autoFocus
                 maxLength={50}
+                className="bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 font-light"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-light">
                 Choose a descriptive name for your project (max 50 characters)
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
+              <Label htmlFor="description" className="text-gray-700 dark:text-gray-300 font-normal">Description (optional)</Label>
               <Textarea
                 id="description"
                 value={description}
@@ -249,18 +252,20 @@ export function CreateProjectForm() {
                 disabled={createProjectMutation.isPending}
                 maxLength={200}
                 rows={3}
+                className="bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 font-light"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-light">
                 Optional description to help identify this project (max 200 characters)
               </p>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4 border-t">
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
               <Link href="/dashboard/projects">
                 <Button 
                   type="button" 
                   variant="outline"
                   disabled={createProjectMutation.isPending}
+                  className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal"
                 >
                   Cancel
                 </Button>
@@ -268,6 +273,7 @@ export function CreateProjectForm() {
               <Button 
                 type="submit" 
                 disabled={createProjectMutation.isPending || !name.trim()}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 font-normal"
               >
                 {createProjectMutation.isPending ? 'Creating...' : 'Create Project'}
               </Button>
@@ -276,22 +282,22 @@ export function CreateProjectForm() {
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-50/50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
+      <Card className="bg-slate-50/50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800 backdrop-blur-sm shadow-lg">
         <CardHeader>
-          <CardTitle className="text-slate-800 dark:text-slate-200 text-lg">
+          <CardTitle className="text-slate-800 dark:text-slate-200 text-lg font-normal">
             What happens next?
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-slate-600 dark:text-slate-400">
-          <p className="text-sm">
+          <p className="text-sm font-light">
             After creating your project, you&apos;ll get an API key to integrate the Revi SDK into your application. 
             This enables real-time error monitoring, session replay, and performance tracking.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">Error Monitoring</Badge>
-            <Badge variant="secondary">Session Replay</Badge>
-            <Badge variant="secondary">Performance Tracking</Badge>
-            <Badge variant="secondary">Real-time Alerts</Badge>
+            <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/30 text-gray-700 dark:text-gray-300 border-0 font-light">Error Monitoring</Badge>
+            <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/30 text-gray-700 dark:text-gray-300 border-0 font-light">Session Replay</Badge>
+            <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/30 text-gray-700 dark:text-gray-300 border-0 font-light">Performance Tracking</Badge>
+            <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/30 text-gray-700 dark:text-gray-300 border-0 font-light">Real-time Alerts</Badge>
           </div>
         </CardContent>
       </Card>

@@ -199,76 +199,76 @@ function SettingsContent() {
       <div className="flex flex-col gap-6 p-6">
         {/* Header Skeleton */}
         <div>
-          <Skeleton className="h-9 w-32 mb-2 bg-gray-200 dark:bg-gray-800" />
-          <Skeleton className="h-5 w-80 bg-gray-200 dark:bg-gray-800" />
+          <Skeleton className="h-9 w-32 mb-2 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+          <Skeleton className="h-5 w-80 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
         </div>
 
         {/* Tabs Skeleton */}
         <div className="w-full max-w-4xl">
           <div className="flex space-x-1 mb-6">
-            <Skeleton className="h-10 w-20 bg-gray-200 dark:bg-gray-800" />
-            <Skeleton className="h-10 w-28 bg-gray-200 dark:bg-gray-800" />
-            <Skeleton className="h-10 w-16 bg-gray-200 dark:bg-gray-800" />
+            <Skeleton className="h-10 w-20 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+            <Skeleton className="h-10 w-28 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+            <Skeleton className="h-10 w-16 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
           </div>
 
           <div className="space-y-6">
             {/* Profile Information Card Skeleton */}
-            <Card>
+            <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Skeleton className="h-5 w-5 rounded bg-gray-200 dark:bg-gray-800" />
-                  <Skeleton className="h-6 w-40 bg-gray-200 dark:bg-gray-800" />
+                  <Skeleton className="h-5 w-5 rounded bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                  <Skeleton className="h-6 w-40 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                 </div>
-                <Skeleton className="h-4 w-72 bg-gray-200 dark:bg-gray-800" />
+                <Skeleton className="h-4 w-72 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <Skeleton className="h-20 w-20 rounded-full bg-gray-200 dark:bg-gray-800" />
+                  <Skeleton className="h-20 w-20 rounded-full bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                   <div className="space-y-2">
                     <div className="flex gap-2">
-                      <Skeleton className="h-8 w-24 bg-gray-200 dark:bg-gray-800" />
-                      <Skeleton className="h-8 w-12 bg-gray-200 dark:bg-gray-800" />
-                      <Skeleton className="h-8 w-16 bg-gray-200 dark:bg-gray-800" />
+                      <Skeleton className="h-8 w-24 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                      <Skeleton className="h-8 w-12 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                      <Skeleton className="h-8 w-16 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                     </div>
-                    <Skeleton className="h-4 w-48 bg-gray-200 dark:bg-gray-800" />
+                    <Skeleton className="h-4 w-48 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Skeleton className="h-4 w-20 bg-gray-200 dark:bg-gray-800" />
-                    <Skeleton className="h-10 w-full bg-gray-200 dark:bg-gray-800" />
+                    <Skeleton className="h-4 w-20 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                    <Skeleton className="h-10 w-full bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                   </div>
                   <div className="space-y-2">
-                    <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-800" />
-                    <Skeleton className="h-10 w-full bg-gray-200 dark:bg-gray-800" />
+                    <Skeleton className="h-4 w-12 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                    <Skeleton className="h-10 w-full bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                   </div>
                 </div>
 
-                <Skeleton className="h-10 w-28 bg-gray-200 dark:bg-gray-800" />
+                <Skeleton className="h-10 w-28 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
               </CardContent>
             </Card>
 
             {/* Change Password Card Skeleton */}
-            <Card>
+            <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
-                <Skeleton className="h-6 w-36 bg-gray-200 dark:bg-gray-800" />
-                <Skeleton className="h-4 w-64 bg-gray-200 dark:bg-gray-800" />
+                <Skeleton className="h-6 w-36 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                <Skeleton className="h-4 w-64 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-32 bg-gray-200 dark:bg-gray-800" />
-                  <Skeleton className="h-10 w-full bg-gray-200 dark:bg-gray-800" />
+                  <Skeleton className="h-4 w-32 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                  <Skeleton className="h-10 w-full bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                 </div>
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-28 bg-gray-200 dark:bg-gray-800" />
-                  <Skeleton className="h-10 w-full bg-gray-200 dark:bg-gray-800" />
+                  <Skeleton className="h-4 w-28 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                  <Skeleton className="h-10 w-full bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                 </div>
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-40 bg-gray-200 dark:bg-gray-800" />
-                  <Skeleton className="h-10 w-full bg-gray-200 dark:bg-gray-800" />
+                  <Skeleton className="h-4 w-40 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
+                  <Skeleton className="h-10 w-full bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
                 </div>
-                <Skeleton className="h-10 w-32 bg-gray-200 dark:bg-gray-800" />
+                <Skeleton className="h-10 w-32 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm" />
               </CardContent>
             </Card>
           </div>
@@ -281,8 +281,8 @@ function SettingsContent() {
     <div className="flex flex-col gap-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-3xl font-light tracking-tight text-gray-800 dark:text-gray-200">Settings</h1>
+        <p className="text-gray-600 dark:text-gray-400 font-light mt-2">
           Manage your account settings and preferences
         </p>
       </div>
@@ -292,20 +292,20 @@ function SettingsContent() {
         onValueChange={handleTabChange}
         className="w-full max-w-4xl"
       >
-        <TabsList>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
+        <TabsList className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700">
+          <TabsTrigger value="profile" className="font-normal text-gray-700 dark:text-gray-300 data-[state=active]:bg-white/50 dark:data-[state=active]:bg-gray-700/50 data-[state=active]:text-gray-800 dark:data-[state=active]:text-gray-200">Profile</TabsTrigger>
+          <TabsTrigger value="billing" className="font-normal text-gray-700 dark:text-gray-300 data-[state=active]:bg-white/50 dark:data-[state=active]:bg-gray-700/50 data-[state=active]:text-gray-800 dark:data-[state=active]:text-gray-200">Billing</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-6">
           {/* Profile Information */}
-          <Card>
+          <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-normal">
                 <Settings2 className="h-5 w-5" />
                 Profile Information
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
                 Update your personal information and profile settings
               </CardDescription>
             </CardHeader>
@@ -329,6 +329,7 @@ function SettingsContent() {
                         document.getElementById("profile-image-input")?.click()
                       }
                       disabled={uploadingImage}
+                      className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-white/60 dark:hover:bg-gray-800/60 text-gray-900 dark:text-gray-200 font-normal"
                     >
                       {uploadingImage ? "Uploading..." : "Change Photo"}
                     </Button>
@@ -337,6 +338,7 @@ function SettingsContent() {
                         size="sm"
                         onClick={handleUploadProfilePicture}
                         disabled={uploadingImage}
+                        className="bg-blue-600/90 hover:bg-blue-700 backdrop-blur-sm text-white font-normal"
                       >
                         Save
                       </Button>
@@ -349,6 +351,7 @@ function SettingsContent() {
                           setImagePreview(null);
                           setProfileImage(null);
                         }}
+                        className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-white/60 dark:hover:bg-gray-800/60 text-gray-900 dark:text-gray-200 font-normal"
                       >
                         Cancel
                       </Button>
@@ -361,7 +364,7 @@ function SettingsContent() {
                     onChange={handleImageChange}
                     className="hidden"
                   />
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-light">
                     JPG, GIF or PNG. 1MB max.
                   </p>
                 </div>
@@ -369,16 +372,17 @@ function SettingsContent() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name" className="text-gray-700 dark:text-gray-300 font-normal">Full Name</Label>
                   <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter your full name"
+                    className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-200 font-light"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-gray-700 dark:text-gray-300 font-normal">Email</Label>
                   <Input
                     id="email"
                     type="email"
@@ -386,11 +390,12 @@ function SettingsContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
                     disabled
+                    className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-200 font-light opacity-60"
                   />
                 </div>
               </div>
 
-              <Button onClick={handleUpdateProfile}>Save Changes</Button>
+              <Button onClick={handleUpdateProfile} className="bg-blue-600/90 hover:bg-blue-700 backdrop-blur-sm text-white font-normal">Save Changes</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -399,8 +404,8 @@ function SettingsContent() {
           <div className="space-y-4 mt-2">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-medium">Billing History</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="text-lg font-normal text-gray-800 dark:text-gray-200">Billing History</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-light">
                   View your past and upcoming invoices
                 </p>
               </div>
@@ -416,6 +421,7 @@ function SettingsContent() {
                   }
                 }}
                 disabled={orders === null}
+                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-white/60 dark:hover:bg-gray-800/60 text-gray-900 dark:text-gray-200 font-normal"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Manage Subscription
@@ -424,42 +430,42 @@ function SettingsContent() {
             {orders?.result?.items && orders.result.items.length > 0 ? (
               <div className="space-y-4">
                 {(orders.result.items || []).map((order) => (
-                  <Card key={order.id} className="overflow-hidden">
+                  <Card key={order.id} className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg overflow-hidden">
                     <CardContent className="px-4">
                       <div className="flex flex-col gap-3">
                         {/* Header Row */}
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="flex justify-center gap-2">
-                              <h4 className="font-medium text-base">
+                              <h4 className="font-normal text-base text-gray-800 dark:text-gray-200">
                                 {order.product?.name || "Subscription"}
                               </h4>
                               <div className="flex items-center gap-2">
                                 {order.subscription?.status === "paid" ? (
-                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs">
+                                  <Badge className="bg-green-100/50 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs backdrop-blur-sm border-green-200 dark:border-green-700">
                                     Paid
                                   </Badge>
                                 ) : order.subscription?.status ===
                                   "canceled" ? (
                                   <Badge
                                     variant="destructive"
-                                    className="text-xs"
+                                    className="text-xs bg-red-500/20 text-red-700 dark:text-red-400 border-red-300 dark:border-red-600 backdrop-blur-sm"
                                   >
                                     Canceled
                                   </Badge>
                                 ) : order.subscription?.status ===
                                   "refunded" ? (
-                                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs">
+                                  <Badge className="bg-blue-100/50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs backdrop-blur-sm border-blue-200 dark:border-blue-700">
                                     Refunded
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs bg-gray-100/50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 backdrop-blur-sm">
                                     {order.subscription?.status}
                                   </Badge>
                                 )}
 
                                 {order.subscription?.status === "canceled" && (
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400 font-light">
                                     • Canceled on{" "}
                                     {order.subscription.endedAt
                                       ? new Date(
@@ -473,7 +479,7 @@ function SettingsContent() {
                                 )}
                               </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-gray-600 dark:text-gray-400 font-light">
                               {new Date(order.createdAt).toLocaleDateString(
                                 "en-US",
                                 {
@@ -486,10 +492,10 @@ function SettingsContent() {
                           </div>
 
                           <div className="text-right">
-                            <div className="font-medium text-base">
+                            <div className="font-normal text-base text-gray-800 dark:text-gray-200">
                               ${(order.totalAmount / 100).toFixed(2)}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-gray-600 dark:text-gray-400 font-light">
                               {order.currency?.toUpperCase()}
                             </div>
                           </div>
@@ -504,10 +510,10 @@ function SettingsContent() {
                                   key={`${order.id}-${item.label}-${index}`}
                                   className="flex justify-between"
                                 >
-                                  <span className="text-muted-foreground truncate max-w-[200px]">
+                                  <span className="text-gray-600 dark:text-gray-400 font-light truncate max-w-[200px]">
                                     {item.label}
                                   </span>
-                                  <span className="font-medium">
+                                  <span className="font-normal text-gray-800 dark:text-gray-200">
                                     ${(item.amount / 100).toFixed(2)}
                                   </span>
                                 </li>
@@ -521,7 +527,7 @@ function SettingsContent() {
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
                 <CardContent className="p-8 text-center">
                   <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
                     <svg
@@ -531,15 +537,15 @@ function SettingsContent() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth="1.5"
-                      className="h-10 w-10 text-muted-foreground mb-4"
+                      className="h-10 w-10 text-gray-400 dark:text-gray-500 mb-4"
                       viewBox="0 0 24 24"
                     >
                       <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                     </svg>
-                    <h3 className="mt-4 text-lg font-semibold">
+                    <h3 className="mt-4 text-lg font-normal text-gray-800 dark:text-gray-200">
                       No orders found
                     </h3>
-                    <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                    <p className="mb-4 mt-2 text-sm text-gray-600 dark:text-gray-400 font-light">
                       {orders === null
                         ? "Unable to load billing history. This may be because your account is not yet set up for billing."
                         : "You don't have any orders yet. Your billing history will appear here."}
@@ -561,8 +567,8 @@ export default function SettingsPage() {
       fallback={
         <div className="flex flex-col gap-6 p-6">
           <div>
-            <div className="h-9 w-32 mb-2 bg-gray-200 dark:bg-gray-800 animate-pulse rounded-md" />
-            <div className="h-5 w-80 bg-gray-200 dark:bg-gray-800 animate-pulse rounded-md" />
+            <div className="h-9 w-32 mb-2 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm animate-pulse rounded-md" />
+            <div className="h-5 w-80 bg-gray-100/30 dark:bg-gray-700/30 backdrop-blur-sm animate-pulse rounded-md" />
           </div>
         </div>
       }

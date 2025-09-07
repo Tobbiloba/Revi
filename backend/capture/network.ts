@@ -1,5 +1,6 @@
 import { api, Header, APIError } from "encore.dev/api";
 import { db } from "./db";
+import { broadcastSessionEvent } from "../sessions/streaming";
 
 export interface NetworkEventData {
   method: string;
@@ -76,6 +77,18 @@ export const captureNetworkEvent = api<CaptureNetworkEventParams, CaptureNetwork
       
       if (result) {
         eventIds.push(result.id);
+        
+        // Broadcast new network event to streaming clients
+        await broadcastSessionEvent(
+          eventData.session_id, 
+          'network_request', 
+          {
+            method: eventData.method,
+            url: eventData.url,
+            status_code: eventData.status_code,
+            response_time: eventData.response_time
+          }
+        );
       }
     }
     

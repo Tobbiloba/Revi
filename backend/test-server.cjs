@@ -1,8 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 const { Client } = require('pg');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:3000", "http://localhost:3001"], // Allow dashboard connections
+    methods: ["GET", "POST"]
+  }
+});
 const port = 4000;
 
 // Middleware
@@ -24,6 +33,189 @@ db.connect().then(() => {
 }).catch(err => {
   console.error('Database connection error:', err);
 });
+
+// WebSocket connection management
+const connectedClients = new Map(); // projectId -> Set of socket IDs
+const clientProjects = new Map();   // socket ID -> projectId
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  // Handle project subscription
+  socket.on('subscribe:project', (projectId) => {
+    console.log(`Client ${socket.id} subscribing to project ${projectId}`);
+    
+    // Leave any previous project room
+    if (clientProjects.has(socket.id)) {
+      const oldProjectId = clientProjects.get(socket.id);
+      socket.leave(`project:${oldProjectId}`);
+      
+      if (connectedClients.has(oldProjectId)) {
+        connectedClients.get(oldProjectId).delete(socket.id);
+        if (connectedClients.get(oldProjectId).size === 0) {
+          connectedClients.delete(oldProjectId);
+        }
+      }
+    }
+    
+    // Join new project room
+    socket.join(`project:${projectId}`);
+    clientProjects.set(socket.id, projectId);
+    
+    if (!connectedClients.has(projectId)) {
+      connectedClients.set(projectId, new Set());
+    }
+    connectedClients.get(projectId).add(socket.id);
+    
+    // Send initial batch of recent errors
+    sendRecentErrors(socket, projectId);
+  });
+  
+  // Handle unsubscribe
+  socket.on('unsubscribe:project', (projectId) => {
+    console.log(`Client ${socket.id} unsubscribing from project ${projectId}`);
+    socket.leave(`project:${projectId}`);
+    
+    if (connectedClients.has(projectId)) {
+      connectedClients.get(projectId).delete(socket.id);
+      if (connectedClients.get(projectId).size === 0) {
+        connectedClients.delete(projectId);
+      }
+    }
+    
+    if (clientProjects.has(socket.id) && clientProjects.get(socket.id) === projectId) {
+      clientProjects.delete(socket.id);
+    }
+  });
+  
+  // Handle filter updates
+  socket.on('filters:update', (filters) => {
+    console.log(`Client ${socket.id} updated filters:`, filters);
+    socket.filters = filters;
+  });
+  
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    
+    if (clientProjects.has(socket.id)) {
+      const projectId = clientProjects.get(socket.id);
+      
+      if (connectedClients.has(projectId)) {
+        connectedClients.get(projectId).delete(socket.id);
+        if (connectedClients.get(projectId).size === 0) {
+          connectedClients.delete(projectId);
+        }
+      }
+      
+      clientProjects.delete(socket.id);
+    }
+  });
+});
+
+// Send recent errors to newly connected client
+async function sendRecentErrors(socket, projectId) {
+  try {
+    const result = await db.query(`
+      SELECT e.*, p.name as project_name
+      FROM errors e
+      JOIN projects p ON e.project_id = p.id
+      WHERE e.project_id = $1
+      ORDER BY e.timestamp DESC
+      LIMIT 50
+    `, [projectId]);
+    
+    if (result.rows.length > 0) {
+      const errors = result.rows.map(row => ({
+        id: row.id,
+        message: row.message,
+        stack_trace: row.stack_trace,
+        url: row.url,
+        user_agent: row.user_agent,
+        session_id: row.session_id,
+        timestamp: row.timestamp,
+        project_id: row.project_id,
+        metadata: row.metadata,
+        severity: determineSeverity(row.message, row.stack_trace),
+        isNew: false
+      }));
+      
+      socket.emit('errors:batch', errors);
+    }
+  } catch (error) {
+    console.error('Failed to send recent errors:', error);
+  }
+}
+
+// Determine error severity based on message and stack trace
+function determineSeverity(message, stackTrace) {
+  if (!message) return 'medium';
+  
+  const messageStr = message.toLowerCase();
+  const stackStr = (stackTrace || '').toLowerCase();
+  
+  // Critical indicators
+  if (messageStr.includes('uncaught') || 
+      messageStr.includes('fatal') || 
+      messageStr.includes('crash') ||
+      messageStr.includes('out of memory') ||
+      stackStr.includes('uncaught')) {
+    return 'critical';
+  }
+  
+  // High severity indicators  
+  if (messageStr.includes('error') || 
+      messageStr.includes('exception') ||
+      messageStr.includes('failed') ||
+      stackStr.includes('error')) {
+    return 'high';
+  }
+  
+  // Low severity indicators
+  if (messageStr.includes('warning') || 
+      messageStr.includes('deprecated') ||
+      messageStr.includes('notice')) {
+    return 'low';
+  }
+  
+  return 'medium';
+}
+
+// Emit real-time error to connected clients
+function emitErrorToClients(projectId, errorData) {
+  if (connectedClients.has(projectId)) {
+    io.to(`project:${projectId}`).emit('error:new', {
+      ...errorData,
+      isNew: true,
+      severity: determineSeverity(errorData.message, errorData.stack_trace)
+    });
+    console.log(`Emitted error to ${connectedClients.get(projectId).size} clients for project ${projectId}`);
+  }
+}
+
+// Update session tracking for user journey reconstruction
+async function updateSessionTracking(projectId, sessionId, url, timestamp) {
+  try {
+    // First, ensure session exists
+    await db.query(`
+      INSERT INTO sessions (project_id, session_id, user_id, started_at, ended_at, metadata)
+      VALUES ($1, $2, NULL, $3, $3, '{}')
+      ON CONFLICT (session_id) DO UPDATE SET
+        ended_at = $3,
+        metadata = sessions.metadata || '{"page_count": 1}'::jsonb
+    `, [projectId, sessionId, timestamp]);
+    
+    // Add session event for navigation
+    if (url) {
+      await db.query(`
+        INSERT INTO session_events (session_id, event_type, data, timestamp)
+        VALUES ($1, 'navigation', $2, $3)
+      `, [sessionId, JSON.stringify({ url, type: 'error_page' }), timestamp]);
+    }
+  } catch (error) {
+    console.error('Failed to update session tracking:', error);
+  }
+}
 
 // Helper function to validate API key
 async function validateApiKey(apiKey) {
@@ -47,6 +239,7 @@ app.post('/api/capture/error', async (req, res) => {
     
     const errorsToProcess = req.body.errors || [req.body];
     const errorIds = [];
+    const capturedErrors = [];
     
     for (const errorData of errorsToProcess) {
       const result = await db.query(`
@@ -55,7 +248,7 @@ app.post('/api/capture/error', async (req, res) => {
           session_id, metadata, timestamp
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-        RETURNING id
+        RETURNING id, timestamp
       `, [
         projectId, 
         errorData.message, 
@@ -67,7 +260,35 @@ app.post('/api/capture/error', async (req, res) => {
       ]);
       
       if (result.rows.length > 0) {
-        errorIds.push(result.rows[0].id);
+        const errorId = result.rows[0].id;
+        const timestamp = result.rows[0].timestamp;
+        errorIds.push(errorId);
+        
+        // Prepare error data for real-time emission
+        const realtimeError = {
+          id: errorId,
+          project_id: projectId,
+          message: errorData.message,
+          stack_trace: errorData.stack_trace,
+          url: errorData.url,
+          user_agent: errorData.user_agent,
+          session_id: errorData.session_id,
+          session_user_id: errorData.metadata?.userId || errorData.metadata?.user_id,
+          metadata: errorData.metadata || {},
+          timestamp: timestamp
+        };
+        
+        capturedErrors.push(realtimeError);
+        
+        // Emit real-time error to connected clients
+        emitErrorToClients(projectId, realtimeError);
+      }
+    }
+    
+    // Also update session tracking if session events exist
+    for (const error of capturedErrors) {
+      if (error.session_id) {
+        await updateSessionTracking(projectId, error.session_id, error.url, error.timestamp);
       }
     }
     
@@ -511,17 +732,160 @@ app.get('/api/projects/:projectId/stats', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Test server running at http://localhost:${port}`);
-  console.log('Available endpoints:');
+// Get user journey data for visualization
+app.get('/api/projects/:projectId/user-journeys', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const timeRange = req.query.timeRange || '24h';
+    
+    let hours = 24;
+    switch (timeRange) {
+      case '1h': hours = 1; break;
+      case '6h': hours = 6; break;
+      case '24h': hours = 24; break;
+      case '7d': hours = 168; break;
+      default: hours = 24;
+    }
+    
+    const cutoff = new Date(Date.now() - (hours * 60 * 60 * 1000));
+    
+    // Get sessions with their events and errors
+    const sessionQuery = `
+      SELECT DISTINCT s.session_id, s.user_id, s.started_at, s.ended_at,
+             array_agg(DISTINCT se.data) as events,
+             array_agg(DISTINCT e.url) as error_urls,
+             array_agg(DISTINCT e.message) as error_messages,
+             COUNT(DISTINCT e.id) as error_count
+      FROM sessions s
+      LEFT JOIN session_events se ON s.session_id = se.session_id
+      LEFT JOIN errors e ON s.session_id = e.session_id
+      WHERE s.project_id = $1 
+        AND s.started_at >= $2
+      GROUP BY s.session_id, s.user_id, s.started_at, s.ended_at
+      ORDER BY s.started_at DESC
+      LIMIT 100
+    `;
+    
+    const sessionsResult = await db.query(sessionQuery, [projectId, cutoff]);
+    
+    // Transform the data into user journey format
+    const userJourneys = sessionsResult.rows.map(session => {
+      const events = session.events || [];
+      const errorUrls = session.error_urls || [];
+      
+      // Extract URLs from session events
+      const eventUrls = events
+        .filter(event => event && typeof event === 'object')
+        .map(event => {
+          const eventData = typeof event === 'string' ? JSON.parse(event) : event;
+          return eventData.url;
+        })
+        .filter(url => url);
+      
+      // Combine event URLs and error URLs to create path
+      const allUrls = [...new Set([...eventUrls, ...errorUrls])];
+      const path = allUrls.length > 0 ? allUrls : ['/unknown'];
+      
+      return {
+        sessionId: session.session_id,
+        userId: session.user_id,
+        path: path,
+        timestamps: [session.started_at, session.ended_at || session.started_at],
+        errorCount: parseInt(session.error_count) || 0,
+        errors: (session.error_messages || []).filter(msg => msg),
+        duration: session.ended_at 
+          ? new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()
+          : 0,
+        converted: Math.random() > 0.6 // This could be enhanced with real conversion tracking
+      };
+    });
+    
+    res.json({
+      success: true,
+      userJourneys: userJourneys,
+      totalSessions: userJourneys.length
+    });
+    
+  } catch (error) {
+    console.error('User journeys failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get real-time error stream data for components
+app.get('/api/projects/:projectId/errors/stream', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const timeRange = req.query.timeRange || '24h';
+    const limit = parseInt(req.query.limit) || 100;
+    
+    let hours = 24;
+    switch (timeRange) {
+      case '1h': hours = 1; break;
+      case '6h': hours = 6; break; 
+      case '24h': hours = 24; break;
+      case '7d': hours = 168; break;
+      default: hours = 24;
+    }
+    
+    const cutoff = new Date(Date.now() - (hours * 60 * 60 * 1000));
+    
+    const result = await db.query(`
+      SELECT e.*, p.name as project_name
+      FROM errors e
+      JOIN projects p ON e.project_id = p.id
+      WHERE e.project_id = $1
+        AND e.timestamp >= $2
+      ORDER BY e.timestamp DESC
+      LIMIT $3
+    `, [projectId, cutoff, limit]);
+    
+    const errors = result.rows.map(row => ({
+      id: row.id,
+      message: row.message,
+      stack_trace: row.stack_trace,
+      url: row.url,
+      user_agent: row.user_agent,
+      session_id: row.session_id,
+      session_user_id: row.metadata?.userId || row.metadata?.user_id,
+      timestamp: row.timestamp,
+      project_id: row.project_id,
+      metadata: row.metadata,
+      severity: determineSeverity(row.message, row.stack_trace),
+      isNew: false
+    }));
+    
+    res.json({
+      success: true,
+      errors: errors,
+      totalCount: errors.length
+    });
+    
+  } catch (error) {
+    console.error('Error stream failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+server.listen(port, () => {
+  console.log(`🚀 Revi Backend Server running at http://localhost:${port}`);
+  console.log('📡 WebSocket server ready for real-time error streaming');
+  console.log('');
+  console.log('Available REST endpoints:');
   console.log('  GET  /health');
   console.log('  POST /api/projects - Create new project');
   console.log('  GET  /api/projects - List all projects');  
   console.log('  GET  /api/projects/:id - Get project details');
-  console.log('  POST /api/capture/error');
+  console.log('  POST /api/capture/error - Capture errors (with real-time streaming)');
   console.log('  POST /api/capture/session-event');
   console.log('  POST /api/capture/network-event');
   console.log('  GET  /api/errors/:projectId');
   console.log('  GET  /api/session/:sessionId/events');
   console.log('  GET  /api/projects/:projectId/stats');
+  console.log('');
+  console.log('WebSocket events:');
+  console.log('  📤 error:new - Real-time error notifications');
+  console.log('  📤 errors:batch - Initial error batch on connect');
+  console.log('  📥 subscribe:project - Subscribe to project errors');
+  console.log('  📥 filters:update - Update error filtering');
 });

@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useMemo } from "react";
-import { useErrors, useUpdateErrorStatus } from "@/lib/hooks/useReviData";
+import { useState, useMemo, useCallback } from "react";
+import { useErrors, useUpdateErrorStatus, useBulkUpdateErrorStatus } from "@/lib/hooks/useReviData";
 import { useNotifications } from "@/components/ui/notification-provider";
 import { ErrorListSkeleton } from "@/components/ui/loading-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   IconAlertCircle, 
   IconCalendar, 
@@ -20,7 +21,12 @@ import {
   IconX,
   IconSortAscending,
   IconSortDescending,
-  IconCopy
+  IconCheckbox,
+  IconUsers,
+  IconTarget,
+  IconBulb,
+  IconFilter,
+  IconAdjustments
 } from "@tabler/icons-react";
 import { ErrorWithSession, ListErrorsParams } from "@/lib/revi-api";
 import Link from "next/link";
@@ -31,20 +37,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { ErrorDetailModal } from "./error-detail-model";
 // Utility function to get status badge variant and color
 const getStatusBadge = (status?: string) => {
   switch (status) {
     case 'resolved':
-      return { variant: 'secondary' as const, className: 'bg-green-100 text-green-800 border-green-200' };
+      return { variant: 'secondary' as const, className: 'bg-green-100/50 dark:bg-green-500/10 text-green-800 dark:text-green-400 border-green-200 dark:border-green-700 backdrop-blur-sm' };
     case 'investigating':
-      return { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+      return { variant: 'secondary' as const, className: 'bg-yellow-100/50 dark:bg-yellow-500/10 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700 backdrop-blur-sm' };
     case 'ignored':
-      return { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-600 border-gray-200' };
+      return { variant: 'secondary' as const, className: 'bg-gray-100/50 dark:bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 backdrop-blur-sm' };
     case 'new':
     default:
-      return { variant: 'destructive' as const, className: '' };
+      return { variant: 'destructive' as const, className: 'bg-red-500/20 dark:bg-red-500/20 backdrop-blur-sm border-red-200 dark:border-red-700' };
   }
 };
 
@@ -52,17 +65,94 @@ export function ErrorListView() {
   const [page, setPage] = useState(1);
   const [selectedError, setSelectedError] = useState<ErrorWithSession | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedErrors, setSelectedErrors] = useState<Set<number>>(new Set());
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filters, setFilters] = useState<{
     dateRange?: string;
     sessionFilter?: string;
     status?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    severity?: string[];
+    errorType?: string;
+    affectedUsers?: string;
+    browserOs?: string;
   }>({});
   const limit = 20;
 
   const updateErrorStatus = useUpdateErrorStatus();
+  const bulkUpdateErrorStatus = useBulkUpdateErrorStatus();
   const { addNotification } = useNotifications();
+
+  // Multi-selection helpers
+  const toggleErrorSelection = useCallback((errorId: number) => {
+    setSelectedErrors(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(errorId)) {
+        newSet.delete(errorId);
+      } else {
+        newSet.add(errorId);
+      }
+      return newSet;
+    });
+  }, []);
+
+
+  const clearSelection = useCallback(() => {
+    setSelectedErrors(new Set());
+  }, []);
+
+  // We'll calculate these inside the component after filteredAndSortedErrors is available
+
+  // Bulk operations
+  const handleBulkStatusUpdate = useCallback(async (status: 'investigating' | 'resolved' | 'ignored', resolutionNotes?: string) => {
+    if (selectedErrors.size === 0) return;
+    
+    try {
+      await bulkUpdateErrorStatus.mutateAsync({
+        errorIds: Array.from(selectedErrors),
+        data: {
+          status,
+          resolution_notes: resolutionNotes
+        }
+      });
+      
+      addNotification({
+        type: 'success',
+        title: 'Bulk Update Successful',
+        message: `Updated ${selectedErrors.size} errors to ${status}`,
+        duration: 3000
+      });
+      
+      clearSelection();
+    } catch {
+      addNotification({
+        type: 'error',
+        title: 'Bulk Update Failed',
+        message: 'Failed to update selected errors. Please try again.',
+        duration: 5000
+      });
+    }
+  }, [selectedErrors, bulkUpdateErrorStatus, addNotification, clearSelection]);
+
+  // Enhanced severity detection
+  const getSeverityFromMetadata = useCallback((error: ErrorWithSession) => {
+    const metadata = error.metadata || {};
+    if (metadata.severity) return String(metadata.severity);
+    
+    // Auto-detect severity based on error patterns
+    const message = error.message.toLowerCase();
+    if (message.includes('uncaught') || message.includes('fatal') || message.includes('crash')) {
+      return 'critical';
+    }
+    if (message.includes('network') || message.includes('timeout') || message.includes('failed')) {
+      return 'high';
+    }
+    if (message.includes('warning') || message.includes('deprecated')) {
+      return 'medium';
+    }
+    return 'low';
+  }, []);
 
   // Build query parameters
   const queryParams = useMemo((): ListErrorsParams => {
@@ -131,6 +221,41 @@ export function ErrorListView() {
       filtered = filtered.filter(error => (error.status || 'new') === status);
     }
     
+    // Apply severity filter
+    if (filters.severity && filters.severity.length > 0) {
+      filtered = filtered.filter(error => {
+        const severity = getSeverityFromMetadata(error);
+        return filters.severity!.includes(severity);
+      });
+    }
+    
+    // Apply error type filter
+    if (filters.errorType && filters.errorType !== 'all') {
+      filtered = filtered.filter(error => {
+        const message = error.message.toLowerCase();
+        switch (filters.errorType) {
+          case 'javascript':
+            return message.includes('script') || message.includes('js') || error.stack_trace?.includes('.js');
+          case 'network':
+            return message.includes('network') || message.includes('fetch') || message.includes('xhr');
+          case 'ui':
+            return message.includes('render') || message.includes('component') || message.includes('element');
+          case 'api':
+            return message.includes('api') || message.includes('endpoint') || message.includes('http');
+          default:
+            return true;
+        }
+      });
+    }
+    
+    // Apply browser/OS filter
+    if (filters.browserOs && filters.browserOs !== 'all') {
+      filtered = filtered.filter(error => {
+        const userAgent = error.user_agent?.toLowerCase() || '';
+        return userAgent.includes(filters.browserOs!.toLowerCase());
+      });
+    }
+    
     // Apply sorting
     if (filters.sortBy) {
       filtered = [...filtered].sort((a, b) => {
@@ -148,6 +273,16 @@ export function ErrorListView() {
           case 'url':
             aVal = a.url?.toLowerCase() || '';
             bVal = b.url?.toLowerCase() || '';
+            break;
+          case 'severity':
+            const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+            aVal = severityOrder[getSeverityFromMetadata(a) as keyof typeof severityOrder] || 1;
+            bVal = severityOrder[getSeverityFromMetadata(b) as keyof typeof severityOrder] || 1;
+            break;
+          case 'frequency':
+            // This would require backend grouping data
+            aVal = 1;
+            bVal = 1;
             break;
           default:
             return 0;
@@ -168,18 +303,18 @@ export function ErrorListView() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2">
+          <CardTitle className="text-red-600 dark:text-red-400 flex items-center gap-2 font-normal">
             <IconAlertCircle className="size-5" />
             Failed to load errors
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-gray-600 dark:text-gray-400 font-light mb-4">
             Unable to connect to the error monitoring service.
           </p>
-          <Button onClick={() => refetch()} variant="outline">
+          <Button onClick={() => refetch()} variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
             <IconRefresh className="size-4 mr-2" />
             Retry
           </Button>
@@ -199,8 +334,181 @@ export function ErrorListView() {
 
   const hasActiveFilters = Object.keys(filters).length > 0 || searchTerm;
 
+  // Bulk Actions Component
+  const BulkActionsPanel = () => {
+    if (selectedErrors.size === 0) return null;
+    
+    return (
+      <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg border-blue-200">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <IconCheckbox className="size-5 text-blue-600" />
+                <span className="font-medium">
+                  {selectedErrors.size} error{selectedErrors.size !== 1 ? 's' : ''} selected
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
+                      <IconTarget className="size-4 mr-2" />
+                      Bulk Actions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
+                    <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate('investigating')}>
+                      Mark as Investigating
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate('resolved')}>
+                      Mark as Resolved
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate('ignored')}>
+                      Mark as Ignored
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Assign</DropdownMenuLabel>
+                    <DropdownMenuItem>
+                      <IconUsers className="size-4 mr-2" />
+                      Assign to Team
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <IconBulb className="size-4 mr-2" />
+                      Merge Similar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearSelection}
+                  className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm hover:bg-white/40 dark:hover:bg-gray-800/40 font-normal"
+                >
+                  <IconX className="size-4 mr-2" />
+                  Clear Selection
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Advanced Filters Panel
+  const AdvancedFiltersPanel = () => {
+    if (!showAdvancedFilters) return null;
+    
+    return (
+      <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-normal flex items-center gap-2 text-gray-800 dark:text-gray-200">
+            <IconAdjustments className="size-4" />
+            Advanced Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Severity Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-normal text-gray-600 dark:text-gray-400">SEVERITY</label>
+              <div className="flex flex-wrap gap-2">
+                {['critical', 'high', 'medium', 'low'].map(severity => {
+                  const isSelected = filters.severity?.includes(severity) || false;
+                  return (
+                    <Button
+                      key={severity}
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => {
+                        setFilters(prev => {
+                          const currentSeverity = prev.severity || [];
+                          const newSeverity = isSelected
+                            ? currentSeverity.filter(s => s !== severity)
+                            : [...currentSeverity, severity];
+                          return { ...prev, severity: newSeverity.length ? newSeverity : undefined };
+                        });
+                      }}
+                    >
+                      <div className={`w-2 h-2 rounded-full mr-1 ${
+                        severity === 'critical' ? 'bg-red-500' :
+                        severity === 'high' ? 'bg-orange-500' :
+                        severity === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+                      }`} />
+                      {severity}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Error Type Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-normal text-gray-600 dark:text-gray-400">ERROR TYPE</label>
+              <Select 
+                value={filters.errorType || 'all'} 
+                onValueChange={(value) => 
+                  setFilters(prev => ({ 
+                    ...prev, 
+                    errorType: value === 'all' ? undefined : value 
+                  }))
+                }
+              >
+                <SelectTrigger className="h-8 text-xs bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="javascript">JavaScript</SelectItem>
+                  <SelectItem value="network">Network</SelectItem>
+                  <SelectItem value="ui">UI/Render</SelectItem>
+                  <SelectItem value="api">API</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Browser/OS Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-normal text-gray-600 dark:text-gray-400">BROWSER/OS</label>
+              <Select 
+                value={filters.browserOs || 'all'} 
+                onValueChange={(value) => 
+                  setFilters(prev => ({ 
+                    ...prev, 
+                    browserOs: value === 'all' ? undefined : value 
+                  }))
+                }
+              >
+                <SelectTrigger className="h-8 text-xs bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700">
+                  <SelectValue placeholder="All Browsers" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
+                  <SelectItem value="all">All Browsers</SelectItem>
+                  <SelectItem value="chrome">Chrome</SelectItem>
+                  <SelectItem value="firefox">Firefox</SelectItem>
+                  <SelectItem value="safari">Safari</SelectItem>
+                  <SelectItem value="edge">Edge</SelectItem>
+                  <SelectItem value="mobile">Mobile</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
+      {/* Bulk Actions Panel */}
+      <BulkActionsPanel />
+      
       {/* Search and Filters */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-4">
@@ -210,7 +518,7 @@ export function ErrorListView() {
               placeholder="Search errors by message, URL, session ID, or stack trace..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700"
             />
           </div>
           
@@ -221,10 +529,10 @@ export function ErrorListView() {
                 dateRange: value === "all" ? undefined : value 
               }))
             }>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-32 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700">
                 <SelectValue placeholder="All Time" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
                 <SelectItem value="all">All Time</SelectItem>
                 <SelectItem value="1h">Last Hour</SelectItem>
                 <SelectItem value="24h">Last 24h</SelectItem>
@@ -239,10 +547,10 @@ export function ErrorListView() {
                 sessionFilter: value === "all" ? undefined : value 
               }))
             }>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-40 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700">
                 <SelectValue placeholder="All Errors" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
                 <SelectItem value="all">All Errors</SelectItem>
                 <SelectItem value="with_session">With Session</SelectItem>
                 <SelectItem value="without_session">No Session</SelectItem>
@@ -255,10 +563,10 @@ export function ErrorListView() {
                 status: value === "all" ? undefined : value 
               }))
             }>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-36 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="new">New</SelectItem>
                 <SelectItem value="investigating">Investigating</SelectItem>
@@ -273,14 +581,16 @@ export function ErrorListView() {
                 sortBy: value === "default" ? undefined : value 
               }))
             }>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-32 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-gray-200 dark:border-gray-700">
                 <SelectItem value="default">Default</SelectItem>
                 <SelectItem value="timestamp">Time</SelectItem>
                 <SelectItem value="message">Message</SelectItem>
                 <SelectItem value="url">URL</SelectItem>
+                <SelectItem value="severity">Severity</SelectItem>
+                <SelectItem value="frequency">Frequency</SelectItem>
               </SelectContent>
             </Select>
 
@@ -289,29 +599,43 @@ export function ErrorListView() {
                 variant="outline"
                 size="sm"
                 onClick={() => setFilters(prev => ({ ...prev, sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' }))}
+                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal"
               >
                 {filters.sortOrder === 'asc' ? <IconSortAscending className="size-4" /> : <IconSortDescending className="size-4" />}
               </Button>
             )}
 
             {hasActiveFilters && (
-              <Button variant="outline" size="sm" onClick={clearFilters}>
+              <Button variant="outline" size="sm" onClick={clearFilters} className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
                 <IconX className="size-4 mr-1" />
                 Clear
               </Button>
             )}
+            
+            <Button 
+              variant={showAdvancedFilters ? "default" : "outline"} 
+              size="sm" 
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={showAdvancedFilters ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0 font-normal" : "bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal"}
+            >
+              <IconFilter className="size-4 mr-2" />
+              Advanced
+            </Button>
           </div>
         </div>
+        
+        {/* Advanced Filters Panel */}
+        <AdvancedFiltersPanel />
       </div>
 
       {/* Error Stats and Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Badge variant="outline">
+          <Badge variant="outline" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-light">
             {data?.total || 0} total errors
           </Badge>
           {errors.length !== (data?.total || 0) && (
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm font-light">
               {errors.length} filtered
             </Badge>
           )}
@@ -321,12 +645,13 @@ export function ErrorListView() {
               variant="ghost"
               size="sm"
               disabled={isFetching}
+              className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm hover:bg-white/40 dark:hover:bg-gray-800/40 font-normal"
             >
               <IconRefresh className={`size-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               {isFetching ? 'Updating...' : 'Refresh'}
             </Button>
             {isFetching && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm font-light">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1" />
                 Live
               </Badge>
@@ -339,6 +664,7 @@ export function ErrorListView() {
             <Button
               variant="outline"
               size="sm"
+              className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal"
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
             >
@@ -350,6 +676,7 @@ export function ErrorListView() {
             <Button
               variant="outline"
               size="sm"
+              className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal"
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
             >
@@ -360,44 +687,83 @@ export function ErrorListView() {
       </div>
 
       <div className="grid gap-4">
-        {errors.map((errorItem) => (
-          <Card 
-            key={errorItem.id} 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setSelectedError(errorItem)}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <IconAlertCircle className="size-4 text-destructive flex-shrink-0" />
-                    <Badge variant="destructive" className="text-xs">
-                      Error #{errorItem.id}
-                    </Badge>
-                    {(() => {
-                      const statusBadge = getStatusBadge(errorItem.status || 'new');
-                      return (
-                        <Badge 
-                          variant={statusBadge.variant} 
-                          className={`text-xs capitalize ${statusBadge.className}`}
-                        >
-                          {errorItem.status || 'new'}
+        {errors.map((errorItem) => {
+          const isSelected = selectedErrors.has(errorItem.id);
+          const severity = getSeverityFromMetadata(errorItem);
+          const severityColor = {
+            critical: 'bg-red-500',
+            high: 'bg-orange-500', 
+            medium: 'bg-yellow-500',
+            low: 'bg-green-500'
+          }[severity];
+          
+          return (
+            <Card 
+              key={errorItem.id} 
+              className={`bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/40 dark:hover:bg-gray-800/40 ${
+                isSelected 
+                  ? 'ring-2 ring-blue-500 bg-blue-50/30 dark:bg-blue-950/20' 
+                  : 'cursor-pointer'
+              }`}
+              onClick={(e) => {
+                if (!(e.target as HTMLElement).closest('[data-no-select]')) {
+                  setSelectedError(errorItem);
+                }
+              }}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {/* Checkbox */}
+                    <div data-no-select className="flex items-center">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleErrorSelection(errorItem.id)}
+                        className="mt-0.5"
+                      />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-2 h-2 rounded-full ${severityColor}`} title={`${severity} severity`} />
+                        <IconAlertCircle className="size-4 text-destructive flex-shrink-0" />
+                        <Badge variant="destructive" className="text-xs bg-red-500/20 dark:bg-red-500/20 backdrop-blur-sm border-red-200 dark:border-red-700">
+                          Error #{errorItem.id}
                         </Badge>
-                      );
-                    })()}
-                    {errorItem.session_id && (
-                      <Badge variant="outline" className="text-xs">
-                        Session
-                      </Badge>
-                    )}
+                        <Badge variant="outline" className={`text-xs capitalize backdrop-blur-sm ${
+                          severity === 'critical' ? 'text-red-600 border-red-200 bg-red-50/50 dark:bg-red-500/10' :
+                          severity === 'high' ? 'text-orange-600 border-orange-200 bg-orange-50/50 dark:bg-orange-500/10' :
+                          severity === 'medium' ? 'text-yellow-600 border-yellow-200 bg-yellow-50/50 dark:bg-yellow-500/10' :
+                          'text-green-600 border-green-200 bg-green-50/50 dark:bg-green-500/10'
+                        }`}>
+                          {severity}
+                        </Badge>
+                        {(() => {
+                          const statusBadge = getStatusBadge(errorItem.status || 'new');
+                          return (
+                            <Badge 
+                              variant={statusBadge.variant} 
+                              className={`text-xs capitalize ${statusBadge.className}`}
+                            >
+                              {errorItem.status || 'new'}
+                            </Badge>
+                          );
+                        })()}
+                        {errorItem.session_id && (
+                          <Badge variant="outline" className="text-xs bg-blue-50/50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 backdrop-blur-sm">
+                            <IconUser className="size-3 mr-1" />
+                            Session
+                          </Badge>
+                        )}
+                      </div>
+                      <h3 className="font-normal text-sm leading-tight mb-2 break-words text-gray-800 dark:text-gray-200">
+                        {errorItem.message}
+                      </h3>
+                    </div>
                   </div>
-                  <h3 className="font-semibold text-sm leading-tight mb-2 break-words">
-                    {errorItem.message}
-                  </h3>
                 </div>
-              </div>
-              
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                
+                <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 font-light ml-8">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1">
                     <IconCalendar className="size-3" />
@@ -412,42 +778,44 @@ export function ErrorListView() {
                   )}
                 </div>
                 
-                {errorItem.session_id && (
-                  <Link
-                    href={`/dashboard/sessions/${errorItem.session_id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  >
-                    <IconExternalLink className="size-3" />
-                    View Session
-                  </Link>
-                )}
-              </div>
-              
-              {errorItem.url && (
-                <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded font-mono break-all">
-                  {errorItem.url}
+                  {errorItem.session_id && (
+                    <Link
+                      href={`/dashboard/sessions/${errorItem.session_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                      data-no-select
+                    >
+                      <IconExternalLink className="size-3" />
+                      View Session
+                    </Link>
+                  )}
                 </div>
-              )}
-            </CardHeader>
-          </Card>
-        ))}
+                
+                {errorItem.url && (
+                  <div className="text-xs text-gray-600 dark:text-gray-400 font-light mt-2 p-2 bg-gray-100/30 dark:bg-gray-700/30 rounded font-mono break-all ml-8">
+                    {errorItem.url}
+                  </div>
+                )}
+              </CardHeader>
+            </Card>
+          );
+        })}
         
         {errors.length === 0 && (
-          <Card>
+          <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="py-12 text-center">
-              <IconAlertCircle className="size-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
+              <IconAlertCircle className="size-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <h3 className="text-lg font-normal mb-2 text-gray-800 dark:text-gray-200">
                 {hasActiveFilters ? 'No errors match your filters' : 'No errors found'}
               </h3>
-              <p className="text-muted-foreground mb-4">
+              <p className="text-gray-600 dark:text-gray-400 font-light mb-4">
                 {hasActiveFilters 
                   ? 'Try adjusting your search criteria or filters.'
                   : 'Great news! No errors have been detected in the selected time range.'
                 }
               </p>
               {hasActiveFilters && (
-                <Button onClick={clearFilters} variant="outline">
+                <Button onClick={clearFilters} variant="outline" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal">
                   Clear filters
                 </Button>
               )}
@@ -483,367 +851,6 @@ export function ErrorListView() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function ErrorDetailModal({ 
-  error, 
-  onClose,
-  onStatusUpdate
-}: { 
-  error: ErrorWithSession; 
-  onClose: () => void;
-  onStatusUpdate: (errorId: number, data: { status: 'new' | 'investigating' | 'resolved' | 'ignored'; resolution_notes?: string }) => void;
-}) {
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [newStatus, setNewStatus] = useState<'new' | 'investigating' | 'resolved' | 'ignored'>(error.status || 'new');
-  const [resolutionNotes, setResolutionNotes] = useState(error.resolution_notes || '');
-  const { addNotification } = useNotifications();
-
-  const handleStatusUpdate = () => {
-    setIsUpdatingStatus(true);
-    onStatusUpdate(error.id, { 
-      status: newStatus, 
-      resolution_notes: resolutionNotes || undefined 
-    });
-  };
-
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    addNotification({
-      type: 'success',
-      title: 'Copied to Clipboard',
-      message: `${label} has been copied to your clipboard`,
-      duration: 2000
-    });
-  };
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <CardHeader className="border-b">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="flex items-center gap-2 mb-2">
-                <IconAlertCircle className="size-5 text-destructive" />
-                Error #{error.id}
-                {(() => {
-                  const statusBadge = getStatusBadge(error.status || 'new');
-                  return (
-                    <Badge 
-                      variant={statusBadge.variant} 
-                      className={`text-xs capitalize ${statusBadge.className}`}
-                    >
-                      {error.status || 'new'}
-                    </Badge>
-                  );
-                })()}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {new Date(error.timestamp).toLocaleString()}
-              </p>
-              
-              {/* Status Management */}
-              <div className="flex items-center gap-4 mt-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium">Status:</label>
-                  <Select value={newStatus} onValueChange={(value) => setNewStatus(value as 'new' | 'investigating' | 'resolved' | 'ignored')}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="investigating">Investigating</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                      <SelectItem value="ignored">Ignored</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <Button 
-                  onClick={handleStatusUpdate} 
-                  size="sm" 
-                  disabled={isUpdatingStatus || newStatus === (error.status || 'new')}
-                >
-                  {isUpdatingStatus ? 'Updating...' : 'Update Status'}
-                </Button>
-              </div>
-
-              {(newStatus === 'resolved' || newStatus === 'ignored') && (
-                <div className="mt-3">
-                  <label className="text-sm font-medium mb-2 block">Resolution Notes:</label>
-                  <Textarea
-                    placeholder="Add notes about the resolution..."
-                    value={resolutionNotes}
-                    onChange={(e) => setResolutionNotes(e.target.value)}
-                    className="text-sm"
-                    rows={3}
-                  />
-                </div>
-              )}
-            </div>
-            
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              ×
-            </Button>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="space-y-6">
-            <div>
-              <h4 className="font-semibold mb-2">Error Message</h4>
-              <p className="text-sm bg-muted p-3 rounded break-words">
-                {error.message}
-              </p>
-            </div>
-            
-            {error.stack_trace && (
-              <div>
-                <h4 className="font-semibold mb-2">Stack Trace</h4>
-                <pre className="text-xs bg-muted p-3 rounded overflow-x-auto whitespace-pre-wrap">
-                  {error.stack_trace}
-                </pre>
-              </div>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {error.url && (
-                <div>
-                  <h4 className="font-semibold mb-2">URL</h4>
-                  <p className="text-sm bg-muted p-3 rounded font-mono break-all">
-                    {error.url}
-                  </p>
-                </div>
-              )}
-              
-              {error.user_agent && (
-                <div>
-                  <h4 className="font-semibold mb-2">User Agent</h4>
-                  <p className="text-xs bg-muted p-3 rounded break-words">
-                    {error.user_agent}
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            {error.session_id && (
-              <div>
-                <h4 className="font-semibold mb-2">Session Information</h4>
-                <div className="bg-muted p-3 rounded space-y-2">
-                  <p className="text-sm">
-                    <span className="font-medium">Session ID:</span> {error.session_id}
-                  </p>
-                  {error.session_user_id && (
-                    <p className="text-sm">
-                      <span className="font-medium">User ID:</span> {error.session_user_id}
-                    </p>
-                  )}
-                  <Link
-                    href={`/dashboard/sessions/${error.session_id}`}
-                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                  >
-                    <IconExternalLink className="size-3" />
-                    View Full Session Timeline
-                  </Link>
-                </div>
-              </div>
-            )}
-            
-            {/* Error Context & Environment */}
-            <div>
-              <h4 className="font-semibold mb-2">Error Context</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Browser Information */}
-                {error.user_agent && (
-                  <div className="space-y-2">
-                    <h5 className="font-medium text-sm">Browser Details</h5>
-                    <div className="bg-muted p-3 rounded text-xs">
-                      <div className="space-y-1">
-                        <div><span className="font-medium">User Agent:</span></div>
-                        <div className="font-mono break-all">{error.user_agent}</div>
-                        {(() => {
-                          const ua = error.user_agent;
-                          const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge)\/([0-9.]+)/);
-                          const osMatch = ua.match(/\(([^)]+)\)/);
-                          return (
-                            <div className="mt-2 space-y-1">
-                              {browserMatch && (
-                                <div><span className="font-medium">Browser:</span> {browserMatch[1]} {browserMatch[2]}</div>
-                              )}
-                              {osMatch && (
-                                <div><span className="font-medium">OS:</span> {osMatch[1]}</div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Error Frequency */}
-                <div className="space-y-2">
-                  <h5 className="font-medium text-sm">Error Pattern</h5>
-                  <div className="bg-muted p-3 rounded text-xs space-y-1">
-                    <div><span className="font-medium">First Occurrence:</span> {new Date(error.timestamp).toLocaleString()}</div>
-                    <div><span className="font-medium">Error ID:</span> #{error.id}</div>
-                    <div><span className="font-medium">Project:</span> #{error.project_id}</div>
-                    {error.session_id && (
-                      <div><span className="font-medium">Session Context:</span> Available</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Debug Breadcrumbs */}
-            <div>
-              <h4 className="font-semibold mb-2">Debug Information</h4>
-              <div className="space-y-3">
-                {/* Error Location Breadcrumb */}
-                {error.stack_trace && (
-                  <div>
-                    <h5 className="font-medium text-sm mb-2">Error Location</h5>
-                    <div className="bg-muted/50 border-l-4 border-destructive p-3 rounded-r">
-                      {(() => {
-                        const firstLine = error.stack_trace.split('\\n')[0];
-                        const locationMatch = firstLine.match(/at (.+) \\((.+):([0-9]+):([0-9]+)\\)/);
-                        if (locationMatch) {
-                          return (
-                            <div className="text-sm space-y-1">
-                              <div className="font-mono"><span className="font-medium">Function:</span> {locationMatch[1]}</div>
-                              <div className="font-mono"><span className="font-medium">File:</span> {locationMatch[2]}</div>
-                              <div className="font-mono"><span className="font-medium">Line:</span> {locationMatch[3]}:{locationMatch[4]}</div>
-                            </div>
-                          );
-                        } else {
-                          return <div className="text-sm font-mono">{firstLine}</div>;
-                        }
-                      })()}
-                    </div>
-                  </div>
-                )}
-
-                {/* Page Context */}
-                {error.url && (
-                  <div>
-                    <h5 className="font-medium text-sm mb-2">Page Context</h5>
-                    <div className="bg-muted/50 border-l-4 border-blue-500 p-3 rounded-r">
-                      <div className="text-sm space-y-1">
-                        <div><span className="font-medium">URL:</span></div>
-                        <div className="font-mono break-all">{error.url}</div>
-                        {(() => {
-                          try {
-                            const url = new URL(error.url);
-                            return (
-                              <div className="mt-2 space-y-1">
-                                <div><span className="font-medium">Domain:</span> {url.hostname}</div>
-                                <div><span className="font-medium">Path:</span> {url.pathname}</div>
-                                {url.search && <div><span className="font-medium">Query:</span> {url.search}</div>}
-                                {url.hash && <div><span className="font-medium">Hash:</span> {url.hash}</div>}
-                              </div>
-                            );
-                          } catch {
-                            return null;
-                          }
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Similar Errors Hint */}
-                <div>
-                  <h5 className="font-medium text-sm mb-2">Investigation Hints</h5>
-                  <div className="bg-blue-50 border border-blue-200 p-3 rounded">
-                    <div className="text-sm space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
-                        <div>
-                          <span className="font-medium">Related Errors:</span> Search for similar error messages in your logs
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
-                        <div>
-                          <span className="font-medium">User Impact:</span> {error.session_id ? 'User session affected - check timeline' : 'No user session data available'}
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
-                        <div>
-                          <span className="font-medium">Browser Compatibility:</span> {error.user_agent ? 'Check if error is browser-specific' : 'No browser information available'}
-                        </div>
-                      </div>
-                      {error.url && (
-                        <div className="flex items-start gap-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
-                          <div>
-                            <span className="font-medium">Page Analysis:</span> Test the affected page manually for reproduction
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Items */}
-            <div>
-              <h4 className="font-semibold mb-2">Quick Actions</h4>
-              <div className="flex flex-wrap gap-2">
-                {error.session_id && (
-                  <Link href={`/dashboard/sessions/${error.session_id}`}>
-                    <Button variant="outline" size="sm">
-                      <IconExternalLink className="size-4 mr-2" />
-                      View Session Timeline
-                    </Button>
-                  </Link>
-                )}
-                {error.url && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => window.open(error.url, '_blank')}
-                  >
-                    <IconExternalLink className="size-4 mr-2" />
-                    Open Error Page
-                  </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleCopy(JSON.stringify({
-                    id: error.id,
-                    message: error.message,
-                    url: error.url,
-                    timestamp: error.timestamp,
-                    stack_trace: error.stack_trace
-                  }, null, 2), 'Error details')}
-                >
-                  <IconCopy className="size-4 mr-2" />
-                  Copy Error Details
-                </Button>
-                <Button variant="outline" size="sm">
-                  <IconAlertCircle className="size-4 mr-2" />
-                  Search Similar Errors
-                </Button>
-              </div>
-            </div>
-
-            {Object.keys(error.metadata || {}).length > 0 && (
-              <div>
-                <h4 className="font-semibold mb-2">Additional Metadata</h4>
-                <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
-                  {JSON.stringify(error.metadata, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Activity,
   FolderOpen,
+  Home
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,6 +25,12 @@ interface NavItem {
 }
 
 const globalNavItems: NavItem[] = [
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: Home,
+    context: 'global',
+  },
   {
     label: "Projects",
     href: "/dashboard/projects",
@@ -64,15 +71,22 @@ export default function DashboardSideBar() {
     : globalNavItems;
 
   return (
-    <div className="min-[1024px]:block hidden w-56 border-r border-lime-500/20 h-full px-4">
-      <div className="flex h-full flex-col">
+    <div className="min-[1024px]:block hidden w-56 border-r border-white/10 bg-[#0b0d11] backdrop-blur-xl h-full px-4 relative">
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 opacity-5 z-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }}
+      />
+      
+      <div className="flex h-full flex-col relative z-10">
         <div className="flex h-[6rem] items-center mb-2">
           <Link
             prefetch={true}
-            className="flex items-center bg-white/10 border border-white/40 rounded-md hover:cursor-pointer"
+            className="flex items-center hover:cursor-pointer group transition-all duration-300"
             href="/"
           >
-            <Image src="/logo.png" width={400} height={400} alt="logo" className="w-12 h-12"/>
+            <Image src="/logo-white.png" width={200} height={200} className="w-16 h-16" alt="logo"/>
           </Link>
         </div>
         
@@ -83,37 +97,63 @@ export default function DashboardSideBar() {
         {isProjectContext && currentProjectId && <ApiKeySection />}
 
         <nav className="flex flex-col h-full justify-between items-start w-full space-y-1 mt-6">
-          <div className="w-full space-y-1 py-4">
+          <div className="w-full space-y-2 py-4">
             {navItems.map((item) => (
               <div
                 key={item.href}
                 onClick={() => router.push(item.href)}
                 className={clsx(
-                  "flex items-center gap-2 w-full rounded-lg px-3 py-3 text-sm font-[300] transition-colors hover:cursor-pointer",
+                  "flex items-center gap-3 w-full rounded-lg px-3 py-3 text-sm font-light transition-all duration-300 hover:cursor-pointer group relative overflow-hidden",
                   pathname === item.href
-                    ? "bg-lime-600/20 text-lime-300 hover:bg-primary/20"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "bg-gradient-to-r from-emerald-500/20 via-cyan-500/10 to-transparent text-white border border-emerald-500/30 backdrop-blur-sm shadow-lg shadow-emerald-500/10"
+                    : "text-gray-300 hover:bg-white/10 hover:text-white hover:backdrop-blur-sm hover:border-white/20 border border-transparent",
                 )}
               >
-                <item.icon className="h-5 w-5" strokeWidth={1} />
-                {item.label}
+                {/* Active state gradient overlay */}
+                {pathname === item.href && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 to-cyan-400/10 animate-pulse" />
+                )}
+                
+                <item.icon className={clsx(
+                  "h-5 w-5 relative z-10 transition-colors duration-300",
+                  pathname === item.href 
+                    ? "text-emerald-400" 
+                    : "text-gray-400 group-hover:text-emerald-400"
+                )} strokeWidth={1.5} />
+                <span className="relative z-10">{item.label}</span>
+                
+                {/* Hover gradient effect */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 transition-opacity duration-300" />
               </div>
             ))}
           </div>
 
-          <div className="flex flex-col gap-2 w-full">
-            <div className="">
+          <div className="flex flex-col gap-3 w-full pb-4">
+            <div>
               <div
                 onClick={() => router.push("/dashboard/settings")}
                 className={clsx(
-                  "flex items-center w-full gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:cursor-pointer",
+                  "flex items-center gap-3 w-full rounded-lg px-3 py-3 text-sm font-light transition-all duration-300 hover:cursor-pointer group relative overflow-hidden",
                   pathname === "/dashboard/settings"
-                    ? "bg-lime-600/20 text-lime-300 hover:bg-primary/20"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "bg-gradient-to-r from-emerald-500/20 via-cyan-500/10 to-transparent text-white border border-emerald-500/30 backdrop-blur-sm shadow-lg shadow-emerald-500/10"
+                    : "text-gray-300 hover:bg-white/10 hover:text-white hover:backdrop-blur-sm hover:border-white/20 border border-transparent",
                 )}
               >
-                <Settings className="h-4 w-4" />
-                Settings
+                {/* Active state gradient overlay */}
+                {pathname === "/dashboard/settings" && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 to-cyan-400/10 animate-pulse" />
+                )}
+                
+                <Settings className={clsx(
+                  "h-5 w-5 relative z-10 transition-colors duration-300",
+                  pathname === "/dashboard/settings" 
+                    ? "text-emerald-400" 
+                    : "text-gray-400 group-hover:text-emerald-400"
+                )} strokeWidth={1.5} />
+                <span className="relative z-10">Settings</span>
+                
+                {/* Hover gradient effect */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 transition-opacity duration-300" />
               </div>
             </div>
             <UserProfile />

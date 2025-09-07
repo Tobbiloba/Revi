@@ -85,18 +85,18 @@ export function ProjectListView() {
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-8 w-32 bg-gray-200/50 dark:bg-gray-700/50" />
+          <Skeleton className="h-10 w-32 bg-gray-200/50 dark:bg-gray-700/50" />
         </div>
         <div className="grid gap-4">
           {[...Array(3)].map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg animate-pulse">
               <CardHeader>
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-6 w-48 bg-gray-200/50 dark:bg-gray-700/50" />
+                <Skeleton className="h-4 w-32 bg-gray-200/50 dark:bg-gray-700/50" />
               </CardHeader>
               <CardContent>
-                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full bg-gray-200/50 dark:bg-gray-700/50" />
               </CardContent>
             </Card>
           ))}
@@ -107,15 +107,15 @@ export function ProjectListView() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-destructive">Error Loading Projects</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-red-600 dark:text-red-400 font-normal">Error Loading Projects</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 font-light">
             Failed to load projects. Please try again.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => refetch()} variant="outline">
+          <Button onClick={() => refetch()} variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors font-normal">
             Try Again
           </Button>
         </CardContent>
@@ -128,29 +128,29 @@ export function ProjectListView() {
       {/* Header with Create Button */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-lg font-semibold">Your Projects</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg font-normal text-gray-800 dark:text-gray-200">Your Projects</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 font-light">
             {projects.length} project{projects.length !== 1 ? 's' : ''} total
           </p>
         </div>
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 font-normal">
               <IconPlus className="h-4 w-4 mr-2" />
               Create Project
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-0 shadow-xl">
             <DialogHeader>
-              <DialogTitle>Create New Project</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-gray-800 dark:text-gray-200 font-normal">Create New Project</DialogTitle>
+              <DialogDescription className="text-gray-600 dark:text-gray-400 font-light">
                 Create a new monitoring project to get an API key for integrating the Revi SDK.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="project-name">Project Name</Label>
+                <Label htmlFor="project-name" className="text-gray-700 dark:text-gray-300 font-normal">Project Name</Label>
                 <Input
                   id="project-name"
                   value={newProjectName}
@@ -158,6 +158,7 @@ export function ProjectListView() {
                   placeholder="My Awesome App"
                   disabled={createProjectMutation.isPending}
                   autoFocus
+                  className="bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 font-light"
                 />
               </div>
               <div className="flex justify-end space-x-2">
@@ -166,10 +167,11 @@ export function ProjectListView() {
                   variant="outline" 
                   onClick={() => setIsCreateDialogOpen(false)}
                   disabled={createProjectMutation.isPending}
+                  className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 font-normal"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createProjectMutation.isPending}>
+                <Button type="submit" disabled={createProjectMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 font-normal">
                   {createProjectMutation.isPending ? 'Creating...' : 'Create Project'}
                 </Button>
               </div>
@@ -180,15 +182,17 @@ export function ProjectListView() {
 
       {/* Projects List */}
       {projects.length === 0 ? (
-        <Card>
+        <Card className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-8 text-center">
             <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-              <IconKey className="h-10 w-10 text-muted-foreground mb-4" />
-              <h3 className="mt-4 text-lg font-semibold">No projects yet</h3>
-              <p className="mb-4 mt-2 text-sm text-muted-foreground">
+              <div className="p-3 rounded-lg bg-emerald-500/10 w-fit mb-4">
+                <IconKey className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h3 className="mt-4 text-lg font-normal text-gray-800 dark:text-gray-200">No projects yet</h3>
+              <p className="mb-4 mt-2 text-sm text-gray-600 dark:text-gray-400 font-light">
                 Create your first project to start monitoring errors in your applications.
               </p>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 font-normal">
                 <IconPlus className="h-4 w-4 mr-2" />
                 Create Your First Project
               </Button>
@@ -198,61 +202,61 @@ export function ProjectListView() {
       ) : (
         <div className="grid gap-4">
           {projects.map((project) => (
-            <Card key={project.id} className="relative">
+            <Card key={project.id} className="relative bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-xl">{project.name}</CardTitle>
-                    <CardDescription className="flex items-center gap-2 mt-2">
+                    <CardTitle className="text-xl font-normal text-gray-800 dark:text-gray-200">{project.name}</CardTitle>
+                    <CardDescription className="flex items-center gap-2 mt-2 text-gray-600 dark:text-gray-400 font-light">
                       <IconCalendar className="h-4 w-4" />
                       Created {formatDate(project.created_at)}
                     </CardDescription>
                   </div>
-                  <Badge variant="secondary">ID: {project.id}</Badge>
+                  <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/30 text-gray-700 dark:text-gray-300 border-0 font-light">ID: {project.id}</Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium">API Key</Label>
+                    <Label className="text-sm font-normal text-gray-700 dark:text-gray-300">API Key</Label>
                     <div className="flex items-center gap-2 mt-1">
                       <Input
                         value={project.api_key}
                         readOnly
-                        className="font-mono text-sm"
+                        className="font-mono text-sm bg-white/20 dark:bg-gray-700/20 border-gray-200 dark:border-gray-700"
                         type="password"
                       />
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => copyApiKey(project.api_key, project.name)}
-                        className="flex-shrink-0"
+                        className="flex-shrink-0 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors"
                       >
                         {copiedApiKey === project.api_key ? (
-                          <IconCheck className="h-4 w-4" />
+                          <IconCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                         ) : (
-                          <IconCopy className="h-4 w-4" />
+                          <IconCopy className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                         )}
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 font-light mt-1">
                       Use this API key to configure the Revi SDK in your application.
                     </p>
                   </div>
                   
-                  <div className="pt-4 border-t">
+                  <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
                     <div className="flex justify-between items-center">
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 font-light">
                         Last updated: {formatDate(project.updated_at)}
                       </div>
                       <div className="flex gap-2">
                         <Link href={`/dashboard/projects/${project.id}`}>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors font-normal">
                             View Details
                           </Button>
                         </Link>
                         <Link href={`/dashboard/errors?project=${project.id}`}>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" className="bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors font-normal">
                             View Errors
                           </Button>
                         </Link>

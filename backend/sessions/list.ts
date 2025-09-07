@@ -98,9 +98,19 @@ export const listSessions = api<ListSessionsParams, ListSessionsResponse>(
         GROUP BY session_id
       ) error_stats ON s.session_id = error_stats.session_id
       LEFT JOIN (
-        SELECT session_id, COUNT(*) as event_count
-        FROM session_events
-        GROUP BY session_id
+        SELECT 
+          COALESCE(se_stats.session_id, uje_stats.session_id) as session_id,
+          (COALESCE(se_stats.event_count, 0) + COALESCE(uje_stats.event_count, 0)) as event_count
+        FROM (
+          SELECT session_id, COUNT(*) as event_count
+          FROM session_events
+          GROUP BY session_id
+        ) se_stats
+        FULL OUTER JOIN (
+          SELECT session_id, COUNT(*) as event_count
+          FROM user_journey_events
+          GROUP BY session_id
+        ) uje_stats ON se_stats.session_id = uje_stats.session_id
       ) event_stats ON s.session_id = event_stats.session_id
       ${whereConditions}
       ORDER BY s.started_at DESC

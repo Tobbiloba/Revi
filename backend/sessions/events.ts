@@ -11,7 +11,7 @@ export interface SessionEventData {
   event_type: string;
   data: Record<string, any>;
   timestamp: Date;
-  source: 'session' | 'network' | 'error';
+  source: 'session' | 'network' | 'error' | 'journey';
 }
 
 export interface GetSessionEventsResponse {
@@ -49,7 +49,7 @@ export const getSessionEvents = api<GetSessionEventsParams, GetSessionEventsResp
     }
     
     // Get all events for the session in chronological order
-    const [sessionEvents, networkEvents, errors] = await Promise.all([
+    const [sessionEvents, networkEvents, errors, journeyEvents] = await Promise.all([
       // Session events
       db.queryAll<{
         id: number;
@@ -94,6 +94,23 @@ export const getSessionEvents = api<GetSessionEventsParams, GetSessionEventsResp
         SELECT id, session_id, message, stack_trace, url, timestamp, metadata
         FROM errors
         WHERE session_id = ${params.sessionId}
+      `,
+      
+      // User journey events (includes errors, clicks, page views)
+      db.queryAll<{
+        id: number;
+        session_id: string;
+        event_type: string;
+        url: string;
+        timestamp: Date;
+        metadata: string;
+        user_id?: string;
+        duration_ms?: number;
+      }>`
+        SELECT id, session_id, event_type, url, timestamp, metadata, 
+               user_id, duration_ms
+        FROM user_journey_events
+        WHERE session_id = ${params.sessionId}
       `
     ]);
     
@@ -134,6 +151,19 @@ export const getSessionEvents = api<GetSessionEventsParams, GetSessionEventsResp
         },
         timestamp: error.timestamp,
         source: 'error' as const
+      })),
+      ...journeyEvents.map(event => ({
+        id: event.id,
+        session_id: event.session_id,
+        event_type: event.event_type,
+        data: {
+          url: event.url,
+          user_id: event.user_id,
+          duration_ms: event.duration_ms,
+          metadata: typeof event.metadata === 'string' ? JSON.parse(event.metadata) : event.metadata
+        },
+        timestamp: event.timestamp,
+        source: 'journey' as const
       }))
     ].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     

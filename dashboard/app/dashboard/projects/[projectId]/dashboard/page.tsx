@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from "react";
-import { redirect } from "next/navigation";
 import { SectionCards } from "@/app/dashboard/_components/section-cards";
 import { AnalyticsDashboard } from "@/app/dashboard/_components/analytics-dashboard";
 import { ProjectBreadcrumb } from "@/app/dashboard/_components/project-breadcrumb";
@@ -12,17 +11,16 @@ interface ProjectDashboardPageProps {
 }
 
 export default function ProjectDashboardPage({ params }: ProjectDashboardPageProps) {
-  const [projectId, setProjectId] = React.useState<string>('');
   const [projectIdNum, setProjectIdNum] = React.useState<number>(0);
 
   React.useEffect(() => {
     params.then(({ projectId: id }) => {
-      setProjectId(id);
+      // setProjectId(id);
       const idNum = parseInt(id, 10);
-      if (isNaN(idNum)) {
-        redirect("/dashboard/projects");
-        return;
-      }
+      // if (isNaN(idNum)) {
+      //   redirect("/dashboard/projects");
+      //   return;
+      // }
       setProjectIdNum(idNum);
       // Set API client project ID once for all components
       apiClient.setProjectId(idNum);
@@ -38,10 +36,10 @@ export default function ProjectDashboardPage({ params }: ProjectDashboardPagePro
       <div className="w-full">
         <ProjectBreadcrumb />
         <div className="flex flex-col items-start justify-center gap-2 mb-6">
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-3xl font-light tracking-tight text-gray-800 dark:text-gray-200">
             Project Dashboard
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-gray-600 dark:text-gray-400 font-light">
             Real-time monitoring of application errors, user sessions, and performance metrics.
           </p>
         </div>
