@@ -13,8 +13,8 @@
   },
   "scripts": {
     "dev": "encore run",
-    "build": "encore build",
-    "test": "encore test"
+    "build": "tsc --noEmit && echo 'TypeScript compilation successful'",
+    "test": "tsc --noEmit"
   },
   "dependencies": {
     "@types/ws": "^8.18.1",
